@@ -42,16 +42,21 @@ export function baseStyle(node: SceneNode): string {
   return parts.join(";");
 }
 
-/** 节点溯源 data 属性（E4 DOM 语义标识，选择器与 MCP 查询共用） */
+/** 节点溯源 data 属性（E4 DOM 语义标识，选择器与 MCP 查询共用；含组件语义溯源 P1-A） */
 export function dataAttrs(node: SceneNode, sceneFile: string): string {
-  return [
+  const parts = [
     `data-egret-id="${esc(node.id ?? "")}"`,
     `data-egret-name="${esc(node.name ?? "")}"`,
     `data-egret-type="${esc(node.type)}"`,
     `data-egret-path="${esc(node.instancePath)}"`,
     `data-egret-key="${esc(node.stableKey)}"`,
     `data-egret-src="${esc(sceneFile.split("\\").join("/"))}"`,
-  ].join(" ");
+  ];
+  if (node.component) {
+    parts.push(`data-egret-component="${esc(node.component.identity)}"`);
+    parts.push(`data-egret-component-kind="${esc(node.component.kind)}"`);
+  }
+  return parts.join(" ");
 }
 
 /**

@@ -6,6 +6,8 @@ import { renderImageNode } from "./nodes/image-node.js";
 import { renderLabelNode } from "./nodes/label-node.js";
 import { renderButtonNode } from "./nodes/button-node.js";
 import { renderRectNode } from "./nodes/rect-node.js";
+import { renderScrollerNode } from "./nodes/scroller-node.js";
+import { renderAnimationNode } from "./nodes/animation-node.js";
 import type { NodeRenderer, RenderContext, UnsupportedItem } from "./types.js";
 import { baseStyle, dataAttrs, esc } from "./utils.js";
 
@@ -23,14 +25,19 @@ export interface RenderOptions {
 /** 节点类型 -> 渲染器注册表（新增类型：在 nodes/ 加文件并在此注册） */
 const RENDERERS: Record<string, NodeRenderer> = {
   group: renderGroupNode,
+  // 自定义容器组件（EmptyBtn 等，P1-A container 语义）：与 group 同构，复用渲染器
+  container: renderGroupNode,
   image: renderImageNode,
   label: renderLabelNode,
   button: renderButtonNode,
   rect: renderRectNode,
+  scroller: renderScrollerNode,
+  animation: renderAnimationNode,
 };
 
-/** 按占位容器渲染的类型（识别但未支持运行时行为：保留子树可见，样式降级） */
-const PLACEHOLDER_TYPES = new Set(["custom", "scroller", "list", "datagroup", "bitmaplabel", "editabletext"]);
+/** 按占位容器渲染的类型（识别但未支持运行时行为：保留子树可见，样式降级）
+ *  bitmapnumber（P1-C）与 custom（P1-B）无渲染器，自动落入占位分支 */
+const PLACEHOLDER_TYPES = new Set(["list", "datagroup", "bitmaplabel", "editabletext"]);
 
 /** 递归渲染节点；未知/未支持类型渲染为虚线占位容器（保留子节点，不静默丢失） */
 function renderNode(node: SceneNode, ctx: RenderContext): string {

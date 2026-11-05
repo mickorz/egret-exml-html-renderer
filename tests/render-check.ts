@@ -20,6 +20,12 @@ function sceneOf(file: string) {
   return { scene, ctx: { scene, resolver: ws.resolver, toAssetUrl: toUrl, unsupported: [] } };
 }
 
+/** 按 id 递归查节点（测试辅助） */
+function findInScene(root: { id?: string; children: { id?: string; children: unknown[] }[] }, id: string): any {
+  const walk = (n: any): any => (n.id === id ? n : (n.children ?? []).map(walk).find(Boolean) ?? null);
+  return walk(root);
+}
+
 // ---- 节点数量 / 层级 / 顺序 ----
 {
   const { scene } = sceneOf("eui_skins/SampleSkin.exml");
@@ -117,8 +123,10 @@ function sceneOf(file: string) {
   // 子树保留
   assert.equal(scroller.children[0].children[0].type, "label");
   const custom = scene.root.children[1];
-  assert.equal(custom.type, "custom");
-  assert.ok(custom.unsupported[0].includes("CustomWidget") || custom.unsupported[0].includes("ns1:ArtNumberEUI"));
+  // ArtNumberEUI 现已登记 bitmap-number 语义（P1-A），按占位渲染但可追溯
+  assert.equal(custom.type, "bitmapnumber");
+  assert.equal(custom.component?.identity, "ArtNumberEUI");
+  assert.ok(custom.unsupported.some((u) => u.includes("ArtNumberEUI")));
 }
 
 // ---- Scene JSON ----
@@ -178,6 +186,45 @@ function sceneOf(file: string) {
   assert.ok(html.includes("ui-prefix"));
 }
 
+// ---- P1-A：自定义组件语义 / Scroller 容器化 / e:layout 收纳（CustomCompSkin） ----
+{
+  const { scene, ctx } = sceneOf("eui_skins/CustomCompSkin.exml");
+  const html = renderHtml(scene, ctx);
+  // EmptyBtn 容器化：容器渲染（非虚线占位），子节点照常渲染，溯源属性携带语义
+  const btn = html.match(/data-egret-id="btnA"[^>]*style="([^"]*)"/);
+  assert.ok(btn, "btnA 应有 DOM");
+  assert.ok(!btn![1].includes("dashed"), "EmptyBtn 应为容器而非虚线占位");
+  assert.ok(html.includes('data-egret-component="EmptyBtn"'));
+  assert.ok(html.includes('data-egret-component-kind="container"'));
+  // 子节点在内：hero_png 资源在 btnA 容器内渲染
+  assert.ok(/data-egret-id="btnA"[\s\S]*hero/.test(html), "EmptyBtn 内联子节点应渲染");
+  // DragonBonesAni 动画占位：透明标注框 + fileName 标记
+  assert.ok(html.includes("[动画] demo_ani"));
+  const ani = html.match(/data-egret-id="aniA"[^>]*style="([^"]*)"/);
+  assert.ok(ani && ani[1].includes("dashed"), "动画占位应有标注边框");
+  assert.ok(html.includes('data-egret-component="DragonBonesAni"'));
+  assert.ok(html.includes('data-egret-component-kind="animation"'));
+  // ArtNumberEUI 位图数字：P1-C 前按占位渲染，语义登记可追溯（根包与 gdmj 包身份均命中）
+  assert.ok(html.includes('data-egret-component="ArtNumberEUI"'));
+  assert.ok(html.includes('data-egret-component-kind="bitmap-number"'));
+  assert.ok((html.match(/data-egret-component-kind="bitmap-number"/g) ?? []).length >= 2, "两个 ArtNumberEUI 实例均应登记语义");
+  // 未登记自定义组件：仍占位（P1-B 展开），不带组件语义属性
+  assert.ok(!html.includes('data-egret-component="UnknownComp"'), "未登记组件不应带 component 溯源");
+  const unk = html.match(/data-egret-id="unkA"[^>]*style="([^"]*)"/);
+  assert.ok(unk && unk[1].includes("dashed"), "未登记组件应保持占位");
+  // Scroller 裁剪容器：overflow hidden
+  const sc = html.match(/data-egret-id="scrollA"[^>]*style="([^"]*)"/);
+  assert.ok(sc && sc[1].includes("overflow:hidden"), "Scroller 应为裁剪容器");
+  // e:layout 属性元素不再渲染为未知节点
+  assert.ok(!html.includes("unknown:layout") && !html.includes("unknown:HorizontalLayout"), "layout 声明不应渲染为节点");
+  assert.ok(!html.includes(">eui.layout<") && !html.includes(">eui.HorizontalLayout<"), "layout 不应出现在占位 label");
+  // 场景树：layout 声明记录在 List 节点
+  const listNode = findInScene(scene.root, "listA");
+  assert.ok(listNode.layout && listNode.layout.className === "eui.HorizontalLayout");
+  assert.equal(listNode.layout.attrs.gap, "5");
+  assert.ok(listNode.children.length === 0, "List 子节点不含 layout 包装");
+}
+
 // ---- 真实工程冒烟（存在 GDMahjongMobile 时）：解析一个真实 EXML ----
 const REAL_ROOT = process.env.EGRET_PROJECT_ROOT ?? "E:/WorkProjects/GDMahjongMobile/gdmahjong/GDMahjongMobile";
 try {
@@ -193,6 +240,33 @@ try {
   const firstImg = rootGroup.children[0];
   assert.equal(firstImg.asset?.kind, "frame");
   assert.ok(firstImg.asset?.file.includes("pdk.png"));
+
+  // ---- P1-A 目标组件：HometownRebateView 静态框架 ----
+  const hb = realWs.getScene("skins/homeTown/HometownRebateView.exml");
+  assert.ok(hb, "HometownRebateView 场景构建失败");
+  const hbHtml = renderHtml(hb, { scene: hb, resolver: realWs.resolver, toAssetUrl: (abs) => abs });
+  // EmptyBtn 容器化：三个实例均无虚线占位
+  const btns = hbHtml.match(/data-egret-component="EmptyBtn"[^>]*style="[^"]*"/g) ?? [];
+  assert.equal(btns.length, 3, "EmptyBtn 三实例应登记 container 语义");
+  assert.ok(btns.every((s) => !s.includes("dashed")), "EmptyBtn 不应再是虚线占位");
+  // DragonBones 动画占位：两处标注框
+  assert.equal((hbHtml.match(/data-egret-component-kind="animation"/g) ?? []).length, 2);
+  assert.ok(hbHtml.includes("[动画] Xiandinglibao_yh") && hbHtml.includes("[动画] Xiandinglibao_01"));
+  // Scroller 裁剪容器
+  assert.ok(/data-egret-id="_scrollSign"[^>]*overflow:hidden/.test(hbHtml), "Scroller 应为裁剪容器");
+  // ArtNumberEUI 三实例登记 bitmap-number 语义
+  assert.equal((hbHtml.match(/data-egret-component-kind="bitmap-number"/g) ?? []).length, 3);
+  // e:layout 不再渲染为节点
+  assert.ok(!hbHtml.includes("unknown:layout") && !hbHtml.includes("unknown:HorizontalLayout"));
+
+  // ---- P1-A 类名索引（双数据源） ----
+  const itemRender = realWs.resolveSkinClass("HometownRebateItemRenderSkin");
+  assert.ok(itemRender && itemRender.source === "scan");
+  assert.equal(itemRender.file, "skins/homeTown/HometownRebateItemRender.exml");
+  const artNumber = realWs.resolveSkinClass("gdmj.ArtNumber");
+  assert.ok(artNumber && artNumber.source === "thm", "thm 映射应优先");
+  assert.equal(artNumber.file, "skins/ArtNumber.exml");
+  assert.equal(realWs.resolveSkinClass("NoSuchSkinClass"), null);
 } catch (err) {
   console.warn(`[render-check] 跳过真实工程冒烟: ${(err as Error).message}`);
 }

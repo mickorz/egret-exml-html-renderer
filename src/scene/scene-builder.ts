@@ -2,6 +2,7 @@ import path from "node:path";
 import { normalizeExmlFile, normalizeExmlText, type NormalizedNode } from "../parser/exml/exml-normalizer.js";
 import type { ExmlDiagnostic } from "../parser/exml/exml-types.js";
 import { EgretAssetResolver, type ResolvedAsset } from "../assets/egret-asset-resolver.js";
+import { componentSemanticOf, identityOf, type ComponentKind } from "./component-registry.js";
 
 // Egret Scene Builder（P0-C）：EXML 语法树 -> 渲染用场景树
 // 职责边界：
@@ -43,6 +44,10 @@ export interface SceneNode {
   children: SceneNode[];
   instancePath: string;
   stableKey: string;
+  /** 自定义组件语义（P1-A）：identity = URI+localName 解析类名；kind = 注册表语义 */
+  component?: { identity: string; kind: ComponentKind };
+  /** 布局声明（e:layout 属性元素，P1-A 记录 / P1-C 应用排列） */
+  layout?: { className: string; attrs: Record<string, string> };
   /** 未支持特性清单（本次渲染不含的 EXML 特性，必须明确上报） */
   unsupported: string[];
 }
@@ -66,7 +71,7 @@ const IGNORED_ATTRS = new Set([
   "includeIn", "excludeIn", "class", "id", "name",
 ]);
 
-/** 渲染类型映射：EUI 类名本地部分 -> 场景类型（P0 首批） */
+/** 渲染类型映射：EUI 类名本地部分 -> 场景类型（P0 首批 + P1-A Scroller） */
 const EUI_TYPE_MAP: Record<string, string> = {
   Skin: "skin",
   Group: "group",
@@ -74,11 +79,12 @@ const EUI_TYPE_MAP: Record<string, string> = {
   Label: "label",
   Button: "button",
   Rect: "rect",
+  Scroller: "scroller",
 };
 
 /** P0 识别但不支持的 EUI 容器/组件（保留节点与子树，渲染为占位容器） */
 const EUI_KNOWN_UNSUPPORTED = new Set([
-  "Scroller", "List", "DataGroup", "BitmapLabel", "EditableText",
+  "List", "DataGroup", "BitmapLabel", "EditableText",
   "TextInput", "CheckBox", "RadioButton", "ProgressBar", "Slider",
   "TabBar", "ItemRenderer", "Panel", "Window", "TitleWindow",
 ]);
@@ -193,6 +199,8 @@ function measurePreferred(n: NormalizedNode, opts: SceneOptions, file: string): 
 function convertNode(n: NormalizedNode, ctx: BuildContext, opts: SceneOptions, file: string, parentSize?: { width?: number; height?: number }): SceneNode {
   const unsupported: string[] = [];
   let type: string;
+  // 自定义组件语义（P1-A：URI+localName 身份 -> 注册表语义分派）
+  let component: { identity: string; kind: ComponentKind } | undefined;
   if (n.kind === "eui") {
     type = EUI_TYPE_MAP[n.raw.localName]
       ?? (EUI_KNOWN_UNSUPPORTED.has(n.raw.localName)
@@ -204,16 +212,44 @@ function convertNode(n: NormalizedNode, ctx: BuildContext, opts: SceneOptions, f
     } else if (EUI_KNOWN_UNSUPPORTED.has(n.raw.localName)) {
       unsupported.push(`EUI 组件 ${n.className} 暂不支持运行时行为，按占位容器渲染`);
       ctx.diagnostics.push({ level: "warning", code: "SCENE_EUI_NODE_UNSUPPORTED", message: `EUI 组件暂不支持: ${n.className}`, nodeId: n.attrs.id });
+    } else if (type === "scroller") {
+      // P1-A：Scroller 容器化（裁剪容器）；滚动交互/viewport 自适应静态不支持
+      unsupported.push("Scroller 滚动交互未支持，按裁剪容器渲染（scrollPolicy/viewport 静态忽略）");
+      ctx.diagnostics.push({ level: "warning", code: "SCENE_EUI_PARTIAL", message: `Scroller 按裁剪容器渲染: ${n.className}`, nodeId: n.attrs.id });
     }
   } else if (n.kind === "custom") {
-    type = "custom";
-    unsupported.push(`自定义组件 ${n.className} 未展开（P0 不解析自定义组件实现），按占位容器渲染`);
-    ctx.diagnostics.push({ level: "warning", code: "SCENE_CUSTOM_NODE", message: `自定义组件未展开: ${n.className}`, nodeId: n.attrs.id });
+    const identity = identityOf(n.nsUri ?? "", n.raw.localName);
+    const sem = componentSemanticOf(identity, n.raw.localName);
+    if (sem && sem.kind !== "exml-skin") {
+      // 已登记代码组件：按语义分派（exml-skin 候选走下面的展开分支）
+      component = { identity: sem.className, kind: sem.kind };
+      if (sem.kind === "container") {
+        // 代码组件但视觉=内联子节点：按坐标系容器渲染（同 Group）
+        type = "container";
+        unsupported.push(`自定义组件 ${sem.className} 按 container 语义渲染（视觉=内联子节点）`);
+      } else if (sem.kind === "animation") {
+        type = "animation";
+        unsupported.push(`动画组件 ${sem.className} 静态不可还原，按标注占位渲染（fileName=${n.attrs.fileName ?? "?"}, animationName=${n.attrs.animationName ?? "?"}）`);
+        ctx.diagnostics.push({ level: "warning", code: "SCENE_ANIMATION_PLACEHOLDER", message: `动画组件按占位渲染: ${n.className}（fileName=${n.attrs.fileName ?? "?"}）`, nodeId: n.attrs.id });
+      } else {
+        // bitmap-number：P1-C 实现 prefix 位图数字拼合，当前按占位渲染但语义已登记可追溯
+        type = "bitmapnumber";
+        unsupported.push(`位图数字组件 ${sem.className} 按占位渲染（prefix 位图拼合 P1-C 实现，prefix=${n.attrs.prefix ?? "?"}）`);
+        ctx.diagnostics.push({ level: "warning", code: "SCENE_BITMAP_NUMBER_PLACEHOLDER", message: `位图数字组件按占位渲染: ${n.className}`, nodeId: n.attrs.id });
+      }
+    } else {
+      // 未登记代码组件 / exml-skin 候选：P1-B 经类名索引展开，当前占位
+      type = "custom";
+      unsupported.push(`自定义组件 ${n.className} 未展开（P1-B 经类名索引解析皮肤），按占位容器渲染`);
+      ctx.diagnostics.push({ level: "warning", code: "SCENE_CUSTOM_NODE", message: `自定义组件未展开: ${n.className}`, nodeId: n.attrs.id });
+    }
   } else {
     type = "unknown";
     unsupported.push(`未知节点 ${n.raw.tag}`);
   }
   if (Object.keys(n.states).length) unsupported.push(`state 属性未应用: ${Object.keys(n.states).map((s) => `${s}(×${Object.keys(n.states[s]).length})`).join(", ")}`);
+  // 布局声明已从 children 剔除并记录到 layout 字段，但排列未应用（P1-C）——不静默丢弃，必须明示
+  if (n.layout) unsupported.push(`布局声明 ${n.layout.className} 已记录（排列 P1-C 应用）`);
 
   // ---- 属性转换 ----
   const a = n.attrs;
@@ -313,6 +349,8 @@ function convertNode(n: NormalizedNode, ctx: BuildContext, opts: SceneOptions, f
     children,
     instancePath: `${ctx.parentPath}.${name ?? type}`,
     stableKey,
+    component,
+    layout: n.layout ? { className: n.layout.className, attrs: { ...n.layout.attrs } } : undefined,
     unsupported,
   };
 }

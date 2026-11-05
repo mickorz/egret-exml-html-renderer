@@ -24,6 +24,8 @@ function nodeJson(node: SceneNode, opts: SceneJsonOptions): Record<string, unkno
         ? { kind: "file", file: opts.relativize ? opts.relativize(node.asset.file) : node.asset.file }
         : { kind: "frame", file: opts.relativize ? opts.relativize(node.asset.file) : node.asset.file, frame: node.asset.frame }
       : null,
+    component: node.component ?? undefined,
+    layout: node.layout ?? undefined,
     unsupported: node.unsupported.length ? node.unsupported : undefined,
   };
   if (node.children.length) base.children = node.children.map((c) => nodeJson(c, opts));
@@ -78,6 +80,8 @@ export function nodeDetail(node: SceneNode, scene: SceneDocument, opts: SceneJso
         ? { kind: "file", file: opts.relativize ? opts.relativize(node.asset.file) : node.asset.file }
         : { kind: "frame", file: opts.relativize ? opts.relativize(node.asset.file) : node.asset.file, frame: node.asset.frame }
       : null,
+    component: node.component ?? undefined,
+    layout: node.layout ?? undefined,
     unsupported: node.unsupported,
     childCount: node.children.length,
   };

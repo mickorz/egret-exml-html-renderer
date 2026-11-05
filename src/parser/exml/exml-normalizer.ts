@@ -27,6 +27,10 @@ export interface NormalizedNode {
   includeIn?: string;
   /** excludeIn 属性原样（P0 只记录） */
   excludeIn?: string;
+  /** 本节点的 namespace URI（custom / unknown 节点的身份解析依据，P1-A） */
+  nsUri?: string;
+  /** e:layout 属性元素内容（布局声明，从 children 剔除；P1-A 记录 / P1-C 应用） */
+  layout?: NormalizedNode;
 }
 
 /** 节点自身的 namespace 声明（xmlns / xmlns:*） */
@@ -73,14 +77,25 @@ function normalize(node: ExmlNode, scopeIn: Record<string, string>, diagnostics:
     return null;
   }
   const children: NormalizedNode[] = [];
+  let layoutNode: NormalizedNode | null = null;
   for (const child of node.children) {
     const childScope = { ...scope, ...declarationsOf(child) };
+    const childUri = childScope[child.prefix] ?? "";
     // skinName 是属性的内联写法（按 EUI namespace URI 识别，不依赖前缀）：唯一子节点是内联 Skin，提升为普通子节点
-    if ((childScope[child.prefix] ?? "") === EUI_NS && child.localName === "skinName") {
+    if (childUri === EUI_NS && child.localName === "skinName") {
       const inlineSkin = child.children[0];
       if (inlineSkin) {
         const n = normalize(inlineSkin, childScope, diagnostics);
         if (n) children.push(n);
+      }
+      continue;
+    }
+    // e:layout 属性元素（布局声明）：子节点是布局对象（HorizontalLayout 等），收纳到 layout 字段不参与渲染
+    if (childUri === EUI_NS && child.localName === "layout") {
+      const layoutObj = child.children[0];
+      if (layoutObj) {
+        const n = normalize(layoutObj, childScope, diagnostics);
+        if (n) layoutNode = n;
       }
       continue;
     }
@@ -92,6 +107,8 @@ function normalize(node: ExmlNode, scopeIn: Record<string, string>, diagnostics:
   const out: NormalizedNode = { raw: node, kind, className, attrs, states, children };
   if (attrs.includeIn !== undefined) out.includeIn = attrs.includeIn;
   if (attrs.excludeIn !== undefined) out.excludeIn = attrs.excludeIn;
+  if (kind === "custom" || kind === "unknown") out.nsUri = scope[node.prefix] ?? "";
+  if (layoutNode) out.layout = layoutNode;
   return out;
 }
 

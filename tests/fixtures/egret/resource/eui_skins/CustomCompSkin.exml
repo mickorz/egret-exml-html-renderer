@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<e:Skin class="CustomCompSkin" width="400" height="300" xmlns:e="http://ns.egret.com/eui" xmlns:ns1="*" xmlns:gdmj="gdmj.*">
+	<e:Rect fillAlpha="0.3" fillColor="0x335577" left="0" right="0" top="0" bottom="0"/>
+	<ns1:EmptyBtn id="btnA" x="10" y="10" width="60" height="40">
+		<e:Image source="hero_png" width="32" height="32" horizontalCenter="0" verticalCenter="0"/>
+	</ns1:EmptyBtn>
+	<ns1:DragonBonesAni id="aniA" x="100" y="60" fileName="demo_ani" animationName="animation"/>
+	<ns1:ArtNumberEUI id="numA" skinName="ArtNumberSkin" prefix="htSub_json.img_FntXiaohao_" x="200" y="20" width="80" height="34"/>
+	<gdmj:ArtNumberEUI id="numB" x="200" y="60" width="80" height="34"/>
+	<e:Scroller id="scrollA" x="10" y="120" width="200" height="150">
+		<e:Group>
+			<e:Image source="hero_png" x="180" y="100" width="32" height="32"/>
+		</e:Group>
+	</e:Scroller>
+	<e:List id="listA" x="230" y="120" width="150" height="100" itemRendererSkinName="SampleSkin">
+		<e:layout>
+			<e:HorizontalLayout gap="5"/>
+		</e:layout>
+	</e:List>
+	<ns1:UnknownComp id="unkA" x="300" y="20"/>
+</e:Skin>

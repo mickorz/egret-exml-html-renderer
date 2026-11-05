@@ -144,6 +144,26 @@ assert.equal(egretColorToCss("red"), null);
   assert.equal(root.children[0].className, "eui.Label");
 }
 
+// ---- P1-A：e:layout 属性元素收纳 / custom 节点 nsUri ----
+{
+  // e:layout 属性元素：从 children 剔除，收纳到 layout 字段（P1-C 应用）
+  const { root } = normalizeExmlText(
+    `<e:Skin xmlns:e="http://ns.egret.com/eui"><e:List><e:layout><e:HorizontalLayout gap="5"/></e:layout></e:List></e:Skin>`,
+  );
+  const list = root.children[0];
+  assert.equal(list.children.length, 0, "layout 属性元素不应留在 children");
+  assert.ok(list.layout, "layout 声明应收纳到 layout 字段");
+  assert.equal(list.layout.className, "eui.HorizontalLayout");
+  assert.equal(list.layout.attrs.gap, "5");
+}
+{
+  // custom 节点 nsUri（身份解析依据：URI+localName，不依赖前缀）
+  const { root } = normalizeExmlText(
+    `<e:Skin xmlns:e="http://ns.egret.com/eui" xmlns:g="gdmj.*"><g:ArtNumber/></e:Skin>`,
+  );
+  assert.equal(root.children[0].nsUri, "gdmj.*");
+}
+
 // ---- 真实 fixture 文件解析 ----
 {
   // 通过完整构建链路验证 fixture 可解析（buildSceneFromFile 在 render-check 覆盖，这里只验证解析层）

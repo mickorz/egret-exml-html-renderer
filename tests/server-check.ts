@@ -3,6 +3,7 @@ import path from "node:path";
 import fs from "node:fs";
 import { fileURLToPath } from "node:url";
 import { createApp } from "../src/server/server.js";
+import { EgretWorkspace } from "../src/scene/workspace.js";
 import { safeResolveWithin } from "../src/assets/safe-path.js";
 
 // Server 测试（P0-G）：路由 / Scene JSON / 资源静态服务 / 路径穿越防护
@@ -28,6 +29,18 @@ async function get(url: string): Promise<{ status: number; body: string; type: s
 }
 
 try {
+  // ---- P1-A 类名索引（fixture：无 thm.json，scan-only 路径） ----
+  {
+    const ws2 = new EgretWorkspace({ rootDir: fixtureRoot });
+    const hit = ws2.resolveSkinClass("SampleSkin");
+    assert.ok(hit && hit.source === "scan" && hit.file === "eui_skins/SampleSkin.exml", "scan 索引应命中 SampleSkin");
+    assert.equal(ws2.resolveSkinClass("NoSuchSkinClass"), null, "未登记类名应返回 null");
+    // 自定义组件语义出现在 Scene JSON（component 溯源字段）
+    const res2 = await get("/api/scene?file=eui_skins/CustomCompSkin.exml");
+    assert.equal(res2.status, 200);
+    assert.ok(JSON.stringify(JSON.parse(res2.body)).includes('"identity":"EmptyBtn","kind":"container"'), "Scene JSON 应包含 EmptyBtn component 溯源");
+  }
+
   // ---- 统一路径守卫单元断言（P0.1-03） ----
   {
     const resourceDir = path.join(fixtureRoot, "resource");

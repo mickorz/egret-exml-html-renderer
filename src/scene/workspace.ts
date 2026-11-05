@@ -2,7 +2,9 @@ import fs from "node:fs";
 import path from "node:path";
 import { EgretAssetResolver } from "../assets/egret-asset-resolver.js";
 import { safeResolveWithin } from "../assets/safe-path.js";
+import { buildExmlClassIndex, type ClassIndexEntry } from "./component-registry.js";
 import { buildSceneFromFile, type SceneDocument } from "./scene-builder.js";
+import type { ExmlDiagnostic } from "../parser/exml/exml-types.js";
 
 // Egret 工作区（P0-F）：工程信息 + EXML 枚举 + Scene 构建入口
 // HTTP 服务（src/server）与 MCP（src/mcp）共用，保证两者数据一致。
@@ -18,6 +20,9 @@ export class EgretWorkspace {
   readonly rootDir: string;
   readonly resourceDir: string;
   readonly resolver: EgretAssetResolver;
+  /** 类名索引（thm.json + EXML 全量扫描，P1-A；惰性构建一次，进程生命周期内复用） */
+  private classIndex: Map<string, ClassIndexEntry> | null = null;
+  private indexDiagnostics: ExmlDiagnostic[] = [];
 
   constructor(opts: EgretWorkspaceOptions) {
     this.rootDir = path.resolve(opts.rootDir);
@@ -67,6 +72,26 @@ export class EgretWorkspace {
     const abs = safeResolveWithin(this.resourceDir, rel);
     if (!abs || !abs.toLowerCase().endsWith(".exml")) return null;
     return fs.existsSync(abs) ? abs : null;
+  }
+
+  /** 组件类名索引（thm.json 优先 + EXML 根 class 全量扫描；首次调用惰性构建） */
+  getClassIndex(): Map<string, ClassIndexEntry> {
+    if (!this.classIndex) {
+      this.indexDiagnostics = [];
+      this.classIndex = buildExmlClassIndex(this.resourceDir, this.listExmlFiles(), this.indexDiagnostics);
+    }
+    return this.classIndex;
+  }
+
+  /** 组件类名 -> EXML 文件（资源目录相对路径）；未登记返回 null（P1-B 展开/List itemRenderer 解析入口） */
+  resolveSkinClass(cls: string): ClassIndexEntry | null {
+    return this.getClassIndex().get(cls) ?? null;
+  }
+
+  /** 类名索引构建诊断（重复类名 / thm.json 异常） */
+  getIndexDiagnostics(): ExmlDiagnostic[] {
+    this.getClassIndex(); // 确保已构建
+    return this.indexDiagnostics;
   }
 
   /** 构建场景树（每次重新解析，刷新即生效） */
