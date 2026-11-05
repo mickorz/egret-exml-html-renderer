@@ -5,6 +5,7 @@ import { safeResolveWithin } from "../assets/safe-path.js";
 import { buildExmlClassIndex, type ClassIndexEntry } from "./component-registry.js";
 import { buildSceneFromFile, type SceneDocument } from "./scene-builder.js";
 import type { ExmlDiagnostic } from "../parser/exml/exml-types.js";
+import { buildUiAssetIndex, type UiAssetIndexResult } from "./ui-asset-index.js";
 
 // Egret 工作区（P0-F）：工程信息 + EXML 枚举 + Scene 构建入口
 // HTTP 服务（src/server）与 MCP（src/mcp）共用，保证两者数据一致。
@@ -87,6 +88,14 @@ export class EgretWorkspace {
   getIndexDiagnostics(): ExmlDiagnostic[] {
     this.getClassIndex(); // 确保已构建
     return this.indexDiagnostics;
+  }
+
+  /**
+   * 全工程 UI 资产索引（P2-A）：每次重新构建（基准实测 1151 文件约 1.3s，秒级，不引入缓存）。
+   * HTTP API 与 MCP 共用本入口，保证同一份索引服务。
+   */
+  listUiAssets(): UiAssetIndexResult {
+    return buildUiAssetIndex(this.resourceDir, this.listExmlFiles(), this.getClassIndex());
   }
 
   /** 构建场景树（每次重新解析，刷新即生效；P1-B：接入类名索引展开自定义组件与 List itemRenderer） */

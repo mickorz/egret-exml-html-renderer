@@ -4,6 +4,7 @@ import path from "node:path";
 import { EgretWorkspace } from "../scene/workspace.js";
 import { toSceneJson, relTo, findNodeByKey, nodeDetail } from "../scene/scene-json.js";
 import { renderHtml } from "../renderer/html-renderer.js";
+import { findComponentUsages, searchUiAssets, type UiAssetQuery } from "../scene/ui-asset-index.js";
 import { screenshotUrl } from "./chrome.js";
 
 // MCP 四工具的核心逻辑（P0-F）：纯函数、与传输层（stdio 协议壳）分离，便于直测
@@ -33,6 +34,28 @@ function fileUrl(abs: string): string {
 export function toolListExmlFiles(ctx: McpContext): Record<string, unknown> {
   const ws = workspaceOf(ctx);
   return { project: ws.getProjectInfo(), files: ws.listExmlFiles() };
+}
+
+/** 全工程 UI 资产索引检索（与 HTTP /api/ui-assets 同一份索引服务）：?class/?file/?component 三条件 AND */
+export function toolSearchUiAssets(
+  ctx: McpContext,
+  args: { class?: string; file?: string; component?: string },
+): Record<string, unknown> {
+  const ws = workspaceOf(ctx);
+  const idx = ws.listUiAssets();
+  const q: UiAssetQuery = {};
+  if (args.class) q.className = args.class;
+  if (args.file) q.fileFuzzy = args.file;
+  if (args.component) q.componentType = args.component;
+  const entries = Object.keys(q).length ? searchUiAssets(idx.entries, q) : idx.entries;
+  return { stats: idx.stats, count: entries.length, diagnostics: idx.diagnostics, parseFailures: idx.parseFailures, entries };
+}
+
+/** 反查：某组件类被哪些 EXML 引用（标签引用 + itemRendererSkinName 引用；P2-B 图谱数据基础） */
+export function toolFindComponentUsages(ctx: McpContext, args: { class: string }): Record<string, unknown> {
+  const ws = workspaceOf(ctx);
+  const idx = ws.listUiAssets();
+  return { class: args.class, usages: findComponentUsages(idx.entries, args.class) };
 }
 
 /** 获取 EXML 的 Scene JSON（与 HTTP /api/scene 同一份数据） */

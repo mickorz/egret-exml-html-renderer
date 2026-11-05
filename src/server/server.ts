@@ -5,6 +5,7 @@ import { EgretWorkspace } from "../scene/workspace.js";
 import { toSceneJson, relTo } from "../scene/scene-json.js";
 import { renderHtml } from "../renderer/html-renderer.js";
 import { indexHtml } from "./index-html.js";
+import { findComponentUsages, searchUiAssets, type UiAssetQuery } from "../scene/ui-asset-index.js";
 
 // 只读工作区服务（P0-F）：EXML 导航 + Scene JSON + 资源静态服务 + 渲染视图
 // 安全边界：所有路径参数经统一守卫 resolveExml/resolveAsset，解析结果必须仍落在资源目录内；全程只读。
@@ -57,6 +58,28 @@ async function route(req: http.IncomingMessage, res: http.ServerResponse, ws: Eg
   // EXML 文件清单
   if (p === "/api/exml") {
     return json(res, 200, { files: ws.listExmlFiles() });
+  }
+
+  // 全工程 UI 资产索引（P2-A）：?class=&file=&component= 三条件 AND 检索；不传条件返回全量
+  if (p === "/api/ui-assets") {
+    const idx = ws.listUiAssets();
+    const q: UiAssetQuery = {};
+    const cls = u.searchParams.get("class");
+    const file = u.searchParams.get("file");
+    const component = u.searchParams.get("component");
+    if (cls) q.className = cls;
+    if (file) q.fileFuzzy = file;
+    if (component) q.componentType = component;
+    const entries = Object.keys(q).length ? searchUiAssets(idx.entries, q) : idx.entries;
+    return json(res, 200, { stats: idx.stats, diagnostics: idx.diagnostics, parseFailures: idx.parseFailures, count: entries.length, entries });
+  }
+
+  // 反查：某组件类被哪些 EXML 引用（标签引用 + itemRendererSkinName 引用，P2-B 图谱数据基础）
+  if (p === "/api/ui-assets/usage") {
+    const cls = u.searchParams.get("class") ?? "";
+    if (!cls) return json(res, 400, { error: "缺少 class 查询参数" });
+    const idx = ws.listUiAssets();
+    return json(res, 200, { class: cls, usages: findComponentUsages(idx.entries, cls) });
   }
 
   // Scene Tree JSON（AI 与前端共用的核心数据模型）

@@ -1,6 +1,6 @@
 import path from "node:path";
 import { createInterface } from "node:readline";
-import { toolGetExmlScene, toolGetNodeDetail, toolListExmlFiles, toolPreviewExml } from "./tools.js";
+import { toolGetExmlScene, toolGetNodeDetail, toolListExmlFiles, toolPreviewExml, toolSearchUiAssets, toolFindComponentUsages } from "./tools.js";
 
 // egret-exml-html-renderer MCP server（P0-F）
 // stdio 传输：换行分隔 JSON-RPC 2.0；实现 initialize / tools/list / tools/call
@@ -54,6 +54,27 @@ const TOOLS = [
       required: ["file", "key"],
     },
   },
+  {
+    name: "search_ui_assets",
+    description: "检索全工程 UI 资产索引（1151 EXML 三层元数据：基础/结构/资源）；与 HTTP /api/ui-assets 同一份索引服务；不传条件返回全量",
+    inputSchema: {
+      type: "object",
+      properties: {
+        class: { type: "string", description: "根 class 精确匹配（皮肤类名）" },
+        file: { type: "string", description: "文件路径子串模糊匹配（忽略大小写）" },
+        component: { type: "string", description: "组件类型过滤（eui.List 或自定义类名如 ArtNumberEUI）" },
+      },
+    },
+  },
+  {
+    name: "find_component_usages",
+    description: "反查组件类被哪些 EXML 引用（自定义组件标签引用 + itemRendererSkinName 引用）；P2-B 组件关系图谱的数据基础",
+    inputSchema: {
+      type: "object",
+      properties: { class: { type: "string", description: "组件类名" } },
+      required: ["class"],
+    },
+  },
 ];
 
 interface RpcMessage {
@@ -86,6 +107,14 @@ function callTool(name: string, args: Record<string, unknown>): unknown {
       });
     case "get_node_detail":
       return toolGetNodeDetail(ctx, { file: String(args.file ?? ""), key: String(args.key ?? "") });
+    case "search_ui_assets":
+      return toolSearchUiAssets(ctx, {
+        class: args.class ? String(args.class) : undefined,
+        file: args.file ? String(args.file) : undefined,
+        component: args.component ? String(args.component) : undefined,
+      });
+    case "find_component_usages":
+      return toolFindComponentUsages(ctx, { class: String(args.class ?? "") });
     default:
       throw new Error(`未知工具: ${name}`);
   }

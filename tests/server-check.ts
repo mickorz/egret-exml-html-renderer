@@ -29,11 +29,13 @@ async function get(url: string): Promise<{ status: number; body: string; type: s
 }
 
 try {
-  // ---- P1-A 类名索引（fixture：无 thm.json，scan-only 路径） ----
+  // ---- P1-A 类名索引（fixture：thm.json 登记 SampleSkin -> thm 优先；未登记类回退 scan） ----
   {
     const ws2 = new EgretWorkspace({ rootDir: fixtureRoot });
     const hit = ws2.resolveSkinClass("SampleSkin");
-    assert.ok(hit && hit.source === "scan" && hit.file === "eui_skins/SampleSkin.exml", "scan 索引应命中 SampleSkin");
+    assert.ok(hit && hit.source === "thm" && hit.file === "eui_skins/SampleSkin.exml", "thm 登记的 SampleSkin 应以 thm 源命中");
+    const scanHit = ws2.resolveSkinClass("WidgetSkin");
+    assert.ok(scanHit && scanHit.source === "scan" && scanHit.file === "eui_skins/WidgetSkin.exml", "未入 thm 的类应回退 scan");
     assert.equal(ws2.resolveSkinClass("NoSuchSkinClass"), null, "未登记类名应返回 null");
     // 自定义组件语义出现在 Scene JSON（component 溯源字段）
     const res2 = await get("/api/scene?file=eui_skins/CustomCompSkin.exml");

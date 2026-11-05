@@ -67,10 +67,17 @@ try {
   assert.equal(init.serverInfo?.name, "egret-exml-html-renderer");
   notify("notifications/initialized");
 
-  // tools/list
+  // tools/list（P2-A 新增 search_ui_assets / find_component_usages）
   const list = await rpc("tools/list") as { tools?: { name: string }[] };
   const names = (list.tools ?? []).map((t) => t.name).sort();
-  assert.deepEqual(names, ["get_exml_scene", "get_node_detail", "list_exml_files", "preview_exml"]);
+  assert.deepEqual(names, [
+    "find_component_usages",
+    "get_exml_scene",
+    "get_node_detail",
+    "list_exml_files",
+    "preview_exml",
+    "search_ui_assets",
+  ]);
 
   // list_exml_files
   const files = await rpc("tools/call", { name: "list_exml_files", arguments: {} }) as {
@@ -99,6 +106,23 @@ try {
   };
   assert.ok(preview.structuredContent?.htmlFile);
   assert.ok(preview.structuredContent?.url?.startsWith("file:///"));
+
+  // search_ui_assets（P2-A：按组件类型检索，与 HTTP 同一索引服务）
+  const search = await rpc("tools/call", { name: "search_ui_assets", arguments: { component: "ArtNumberEUI" } }) as {
+    structuredContent?: { count?: number; entries?: { basic: { file: string } }[]; stats?: { fileCount: number; entryCount: number } };
+  };
+  assert.equal(search.structuredContent?.stats?.fileCount, 11, "fixture 文件数");
+  assert.equal(search.structuredContent?.count, 3, "ArtNumberEUI 命中 3 文件");
+  assert.ok(search.structuredContent?.entries?.every((e) => e.basic.file.endsWith(".exml")));
+
+  // find_component_usages（P2-A：反查 itemRenderer 引用）
+  const usage = await rpc("tools/call", { name: "find_component_usages", arguments: { class: "ItemBoxSkin" } }) as {
+    structuredContent?: { usages?: { file: string; kind: string }[] };
+  };
+  assert.ok(
+    usage.structuredContent?.usages?.some((u) => u.file.endsWith("ExpandSkin.exml") && u.kind === "itemRenderer"),
+    "反查 ItemBoxSkin 应命中 ExpandSkin",
+  );
 
   // 未知工具：明确报错
   const unknown = await rpc("tools/call", { name: "no_such_tool", arguments: {} }) as { isError?: boolean };
