@@ -1,0 +1,15 @@
+# 依赖与构建产物
+node_modules/
+dist/
+
+# Claude Code 本地配置（不进 git）
+.claude/settings.local.json
+
+# 渲染产物输出
+demo/
+
+# 浏览器自测截图产物
+selftest/
+
+# 本地环境变量
+.env

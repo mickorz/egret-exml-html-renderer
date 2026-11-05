@@ -1,0 +1,25 @@
+{
+  "name": "egret-exml-html-renderer",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "render": "tsx src/poc/render.ts",
+    "serve": "tsx watch src/server/main.ts",
+    "check": "tsx tests/parser-check.ts && tsx tests/render-check.ts",
+    "check:parser": "tsx tests/parser-check.ts",
+    "check:render": "tsx tests/render-check.ts",
+    "check:server": "tsx tests/server-check.ts",
+    "check:mcp": "tsx tests/mcp-check.ts",
+    "mcp": "tsx src/mcp/main.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "fast-xml-parser": "^5.11.2",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2"
+  },
+  "allowScripts": {
+    "esbuild@0.28.2": true
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "egret-exml": {
+      "command": "npx",
+      "args": ["tsx", "src/mcp/main.ts"],
+      "env": {
+        "EGRET_PROJECT_ROOT": "E:/WorkProjects/GDMahjongMobile/gdmahjong/GDMahjongMobile"
+      },
+      "description": "Egret EUI 工程只读工具：列出 EXML 文件、获取 Scene JSON、渲染 EXML 为 HTML、Chrome headless 截图验证、节点详情查询"
+    }
+  }
+}
