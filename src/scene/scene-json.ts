@@ -25,6 +25,8 @@ function nodeJson(node: SceneNode, opts: SceneJsonOptions): Record<string, unkno
         : { kind: "frame", file: opts.relativize ? opts.relativize(node.asset.file) : node.asset.file, frame: node.asset.frame }
       : null,
     component: node.component ?? undefined,
+    srcFile: node.srcFile && opts.relativize ? opts.relativize(node.srcFile) : node.srcFile,
+    simulated: node.simulated ?? undefined,
     layout: node.layout ?? undefined,
     unsupported: node.unsupported.length ? node.unsupported : undefined,
   };
@@ -81,6 +83,8 @@ export function nodeDetail(node: SceneNode, scene: SceneDocument, opts: SceneJso
         : { kind: "frame", file: opts.relativize ? opts.relativize(node.asset.file) : node.asset.file, frame: node.asset.frame }
       : null,
     component: node.component ?? undefined,
+    srcFile: node.srcFile && opts.relativize ? opts.relativize(node.srcFile) : node.srcFile,
+    simulated: node.simulated ?? undefined,
     layout: node.layout ?? undefined,
     unsupported: node.unsupported,
     childCount: node.children.length,

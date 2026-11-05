@@ -45,7 +45,11 @@ export interface SceneNode {
   instancePath: string;
   stableKey: string;
   /** 自定义组件语义（P1-A）：identity = URI+localName 解析类名；kind = 注册表语义 */
-  component?: { identity: string; kind: ComponentKind };
+  component?: { identity: string; kind: ComponentKind; skinClass?: string };
+  /** 展开来源源 EXML（P1-B）：本子树从哪个组件 EXML 展开（绝对路径）；本文档节点无此字段 */
+  srcFile?: string;
+  /** 静态模拟标记（P1-B：List 静态 item 等 AI 模拟生成节点） */
+  simulated?: boolean;
   /** 布局声明（e:layout 属性元素，P1-A 记录 / P1-C 应用排列） */
   layout?: { className: string; attrs: Record<string, string> };
   /** 未支持特性清单（本次渲染不含的 EXML 特性，必须明确上报） */
@@ -93,6 +97,8 @@ const EUI_KNOWN_UNSUPPORTED = new Set([
 export interface SceneOptions {
   /** 资源解析器（image source 解析）；不传则全部图片记 unsupported */
   resolver?: EgretAssetResolver;
+  /** 组件类名 -> 源 EXML 绝对路径（P1-B 自定义组件展开；workspace.resolveSkinClass 适配） */
+  resolveSkinFile?: (className: string) => string | null;
 }
 
 interface BuildContext {
@@ -104,7 +110,16 @@ interface BuildContext {
   diagnostics: ExmlDiagnostic[];
   /** 皮肤默认状态名（states 列表首项，includeIn 归属判断用） */
   defaultState?: string;
+  /** 组件类名 -> 源 EXML 绝对路径（P1-B 展开） */
+  resolveSkinFile?: (className: string) => string | null;
+  /** 展开缓存（本次构建内按文件路径复用归一化树；解析失败缓存 null；每次构建 fresh，不做跨请求缓存） */
+  expandCache: Map<string, NormalizedNode | null>;
+  /** 当前展开链（祖先皮肤文件；循环引用检测用，每分支独立副本） */
+  skinChain: string[];
 }
+
+/** List/DataGroup 静态模拟 item 数量（运行时数据驱动，静态展示用） */
+const STATIC_ITEM_COUNT = 3;
 
 /** "100%" -> 100；非百分比返回 null */
 function parsePercent(v: string): number | null {
@@ -139,6 +154,9 @@ function buildScene(root: NormalizedNode, diagnostics: ExmlDiagnostic[], file: s
     diagnostics,
     // EUI 缺省态 = states 列表首项
     defaultState: root.attrs.states?.split(",")[0]?.trim(),
+    resolveSkinFile: opts.resolveSkinFile,
+    expandCache: new Map(),
+    skinChain: [path.normalize(file)],
   };
   const rootNode = convertNode(root, ctx, opts, file, { width: skinW, height: skinH });
   return { file, className: skinClass, root: rootNode, stage: { width: skinW, height: skinH }, diagnostics };
@@ -200,7 +218,12 @@ function convertNode(n: NormalizedNode, ctx: BuildContext, opts: SceneOptions, f
   const unsupported: string[] = [];
   let type: string;
   // 自定义组件语义（P1-A：URI+localName 身份 -> 注册表语义分派）
-  let component: { identity: string; kind: ComponentKind } | undefined;
+  let component: { identity: string; kind: ComponentKind; skinClass?: string } | undefined;
+  // P1-B 展开状态：皮肤源文件 + 归一化树（展开后子树来自源组件 EXML）
+  let expandSkinFile: string | null = null;
+  let expandSkinRoot: NormalizedNode | null = null;
+  let srcFile: string | undefined;
+  let simulated: boolean | undefined;
   if (n.kind === "eui") {
     type = EUI_TYPE_MAP[n.raw.localName]
       ?? (EUI_KNOWN_UNSUPPORTED.has(n.raw.localName)
@@ -238,10 +261,34 @@ function convertNode(n: NormalizedNode, ctx: BuildContext, opts: SceneOptions, f
         ctx.diagnostics.push({ level: "warning", code: "SCENE_BITMAP_NUMBER_PLACEHOLDER", message: `位图数字组件按占位渲染: ${n.className}`, nodeId: n.attrs.id });
       }
     } else {
-      // 未登记代码组件 / exml-skin 候选：P1-B 经类名索引展开，当前占位
-      type = "custom";
-      unsupported.push(`自定义组件 ${n.className} 未展开（P1-B 经类名索引解析皮肤），按占位容器渲染`);
-      ctx.diagnostics.push({ level: "warning", code: "SCENE_CUSTOM_NODE", message: `自定义组件未展开: ${n.className}`, nodeId: n.attrs.id });
+      // exml-skin 候选（P1-B）：类名索引展开；skinName 属性（字符串形式）优先于标签类名
+      const skinClass = typeof n.attrs.skinName === "string" && n.attrs.skinName !== "" ? n.attrs.skinName : identity;
+      const skinFile = ctx.resolveSkinFile?.(skinClass) ?? null;
+      if (skinFile) {
+        if (ctx.skinChain.includes(skinFile)) {
+          // 循环引用：停止展开，占位并明示（不静默丢弃子树）
+          type = "custom";
+          unsupported.push(`自定义组件 ${identity} 循环引用（${path.basename(skinFile)} 已在展开链中），停止展开按占位渲染`);
+          ctx.diagnostics.push({ level: "warning", code: "SCENE_CUSTOM_CYCLE", message: `循环引用停止展开: ${identity} -> ${skinFile}`, nodeId: n.attrs.id });
+        } else {
+          const skinRoot = loadSkinRoot(skinFile, ctx);
+          if (!skinRoot) {
+            type = "custom";
+            unsupported.push(`自定义组件 ${identity} 皮肤解析失败（${path.basename(skinFile)}），按占位容器渲染`);
+          } else {
+            expandSkinFile = skinFile;
+            expandSkinRoot = skinRoot;
+            type = "container";
+            component = { identity, kind: "exml-skin", skinClass };
+            srcFile = skinFile;
+            ctx.diagnostics.push({ level: "warning", code: "SCENE_CUSTOM_EXPANDED", message: `自定义组件展开: ${identity} -> ${path.basename(skinFile)}`, nodeId: n.attrs.id });
+          }
+        }
+      } else {
+        type = "custom";
+        unsupported.push(`自定义组件 ${identity} 皮肤类 ${skinClass} 未在类名索引中找到，按占位容器渲染`);
+        ctx.diagnostics.push({ level: "warning", code: "SCENE_CUSTOM_NODE", message: `自定义组件未展开（皮肤类未找到）: ${n.className} (${skinClass})`, nodeId: n.attrs.id });
+      }
     }
   } else {
     type = "unknown";
@@ -304,6 +351,12 @@ function convertNode(n: NormalizedNode, ctx: BuildContext, opts: SceneOptions, f
   }
 
   // ---- 尺寸与位置（最小静态布局） ----
+  // 展开皮肤声明尺寸作为自然尺寸（实例无显式尺寸时回落，Egret measuredSize 语义）
+  if (expandSkinRoot && expandSkinFile) {
+    const skinPref = measurePreferred(expandSkinRoot, opts, expandSkinFile);
+    if (skinPref.width !== undefined) attrs.naturalWidth = skinPref.width;
+    if (skinPref.height !== undefined) attrs.naturalHeight = skinPref.height;
+  }
   const bounds = layoutBounds(a, attrs, ctx, parentSize, unsupported);
   // 无显式/百分比/边缘/自然尺寸时：容器类按子节点包围盒测量（Egret measuredSize 语义）
   if (bounds.width === undefined || bounds.height === undefined) {
@@ -321,14 +374,49 @@ function convertNode(n: NormalizedNode, ctx: BuildContext, opts: SceneOptions, f
     indexPath: indexPath ? `${indexPath}` : "0",
     diagnostics: ctx.diagnostics,
     defaultState: ctx.defaultState,
+    resolveSkinFile: ctx.resolveSkinFile,
+    expandCache: ctx.expandCache,
+    skinChain: ctx.skinChain,
   };
 
   const children: SceneNode[] = [];
   // Skin 是透明包装层（无自身布局语义）：子节点使用外层容器的尺寸，不使用 Skin 自身的空 bounds
   const childParentSize = type === "skin" ? parentSize : { width: bounds.width, height: bounds.height };
-  for (let i = 0; i < n.children.length; i++) {
-    childCtx.indexPath = `${indexPath || "0"}.${i}`;
-    children.push(convertNode(n.children[i], childCtx, opts, file, childParentSize));
+  if (expandSkinRoot && expandSkinFile) {
+    // 展开皮肤子树（P1-B）：皮肤根为透明包装层，子节点相对皮肤根坐标、父尺寸 = 本节点 bounds；
+    // stableKey 前缀切换为源组件 EXML（实例路径与源组件路径分离）；状态归属按源皮肤默认状态
+    const skinCtx: BuildContext = {
+      parentPath: childCtx.parentPath,
+      keyPrefix: path.basename(expandSkinFile, ".exml"),
+      indexPath: "",
+      parentSize: childParentSize,
+      diagnostics: ctx.diagnostics,
+      defaultState: expandSkinRoot.attrs.states?.split(",")[0]?.trim(),
+      resolveSkinFile: ctx.resolveSkinFile,
+      expandCache: ctx.expandCache,
+      skinChain: [...ctx.skinChain, expandSkinFile],
+    };
+    for (let i = 0; i < expandSkinRoot.children.length; i++) {
+      skinCtx.indexPath = `${indexPath || "0"}.s${i}`;
+      children.push(convertNode(expandSkinRoot.children[i], skinCtx, opts, expandSkinFile, childParentSize));
+    }
+    // 实例内联子节点（自定义组件标签下直接写的子节点）：contentGroup 归属语义未精确实现，按并列渲染并明示
+    if (n.children.length) {
+      unsupported.push(`自定义组件 ${n.className} 同时含内联子节点与展开皮肤子节点（contentGroup 语义未实现，按并列渲染）`);
+      for (let i = 0; i < n.children.length; i++) {
+        childCtx.indexPath = `${indexPath || "0"}.${i}`;
+        children.push(convertNode(n.children[i], childCtx, opts, file, childParentSize));
+      }
+    }
+  } else {
+    for (let i = 0; i < n.children.length; i++) {
+      childCtx.indexPath = `${indexPath || "0"}.${i}`;
+      children.push(convertNode(n.children[i], childCtx, opts, file, childParentSize));
+    }
+    // List/DataGroup itemRendererSkinName 静态展开（P1-B：运行时数据驱动，静态模拟 N 个 item）
+    if ((type === "list" || type === "datagroup") && n.attrs.itemRendererSkinName) {
+      children.push(...buildStaticItems(n, ctx, opts, childCtx, indexPath, unsupported));
+    }
   }
 
   return {
@@ -350,9 +438,106 @@ function convertNode(n: NormalizedNode, ctx: BuildContext, opts: SceneOptions, f
     instancePath: `${ctx.parentPath}.${name ?? type}`,
     stableKey,
     component,
+    srcFile,
+    simulated,
     layout: n.layout ? { className: n.layout.className, attrs: { ...n.layout.attrs } } : undefined,
     unsupported,
   };
+}
+
+/** 加载皮肤归一化树（P1-B 展开缓存：本次构建内按文件复用；解析失败记诊断返回 null，不静默） */
+function loadSkinRoot(skinFile: string, ctx: BuildContext): NormalizedNode | null {
+  if (ctx.expandCache.has(skinFile)) return ctx.expandCache.get(skinFile) ?? null;
+  try {
+    const r = normalizeExmlFile(skinFile);
+    ctx.diagnostics.push(...r.diagnostics);
+    ctx.expandCache.set(skinFile, r.root);
+    return r.root;
+  } catch (err) {
+    ctx.expandCache.set(skinFile, null);
+    ctx.diagnostics.push({ level: "error", code: "SCENE_SKIN_PARSE_FAIL", message: `皮肤 EXML 解析失败: ${skinFile} (${(err as Error).message})` });
+    return null;
+  }
+}
+
+/**
+ * List/DataGroup 静态 item 展开（P1-B）：itemRendererSkinName -> 源皮肤 -> 模拟 N 个 item。
+ * 朴素排列：按 item 首选尺寸顺次堆叠（水平/垂直由布局声明决定，EUI List 无布局声明时默认垂直）；
+ * gap/padding/对齐等精确布局 P1-C 应用。
+ * 溯源：item 节点 simulated 标记 + srcFile 指向源皮肤 EXML；子节点 stableKey 用源文件前缀。
+ */
+function buildStaticItems(
+  n: NormalizedNode,
+  ctx: BuildContext,
+  opts: SceneOptions,
+  childCtx: BuildContext,
+  indexPath: string,
+  unsupported: string[],
+): SceneNode[] {
+  const cls = n.attrs.itemRendererSkinName!;
+  const skinFile = ctx.resolveSkinFile?.(cls) ?? null;
+  if (!skinFile) {
+    unsupported.push(`List itemRendererSkinName="${cls}" 未在类名索引中找到，item 未展开`);
+    ctx.diagnostics.push({ level: "warning", code: "SCENE_LIST_RENDERER_MISSING", message: `itemRenderer 皮肤类未找到: ${cls}`, nodeId: n.attrs.id });
+    return [];
+  }
+  const skinRoot = loadSkinRoot(skinFile, ctx);
+  if (!skinRoot) {
+    unsupported.push(`List itemRenderer 皮肤解析失败（${path.basename(skinFile)}），item 未展开`);
+    return [];
+  }
+  const pref = measurePreferred(skinRoot, opts, skinFile);
+  const layoutCls = n.layout?.className ?? "";
+  const horizontal = layoutCls === "eui.HorizontalLayout";
+  if (layoutCls !== "" && layoutCls !== "eui.HorizontalLayout" && layoutCls !== "eui.VerticalLayout") {
+    unsupported.push(`布局 ${layoutCls} 未识别，item 按垂直堆叠近似（P1-C）`);
+  }
+  const items: SceneNode[] = [];
+  let x = 0;
+  let y = 0;
+  for (let i = 0; i < STATIC_ITEM_COUNT; i++) {
+    const itemParentSize = { width: pref.width, height: pref.height };
+    const itemCtx: BuildContext = {
+      parentPath: `${childCtx.parentPath}.item${i}`,
+      keyPrefix: path.basename(skinFile, ".exml"),
+      indexPath: "",
+      parentSize: itemParentSize,
+      diagnostics: ctx.diagnostics,
+      defaultState: skinRoot.attrs.states?.split(",")[0]?.trim(),
+      resolveSkinFile: ctx.resolveSkinFile,
+      expandCache: ctx.expandCache,
+      skinChain: [...ctx.skinChain, skinFile],
+    };
+    const itemChildren: SceneNode[] = [];
+    for (let j = 0; j < skinRoot.children.length; j++) {
+      itemCtx.indexPath = `${indexPath || "0"}.i${i}.${j}`;
+      itemChildren.push(convertNode(skinRoot.children[j], itemCtx, opts, skinFile, itemParentSize));
+    }
+    items.push({
+      type: "container",
+      bounds: { x, y, width: pref.width, height: pref.height },
+      attrs: {},
+      native: {
+        tag: "List:itemRenderer",
+        className: cls,
+        attributes: { itemRendererSkinName: cls, index: String(i) },
+        states: {},
+      },
+      asset: undefined,
+      children: itemChildren,
+      instancePath: `${childCtx.parentPath}.item${i}`,
+      stableKey: `${ctx.keyPrefix}#${indexPath || "0"}.i${i}`,
+      component: { identity: cls, kind: "exml-skin", skinClass: cls },
+      srcFile: skinFile,
+      simulated: true,
+      unsupported: [`List 静态模拟 item（运行时数据驱动，示例第 ${i + 1} 项）`],
+    });
+    if (horizontal) x += pref.width ?? 0;
+    else y += pref.height ?? 0;
+  }
+  unsupported.push(`List 运行时数据驱动，静态模拟 ${STATIC_ITEM_COUNT} 个 item（itemRenderer=${cls}，朴素堆叠，精确布局 P1-C）`);
+  ctx.diagnostics.push({ level: "warning", code: "SCENE_LIST_STATIC_ITEMS", message: `List 静态模拟 ${STATIC_ITEM_COUNT} 个 item: ${cls}`, nodeId: n.attrs.id });
+  return items;
 }
 
 /** 文本属性转换（EUI Label -> 语义属性） */
@@ -390,7 +575,12 @@ function convertImageAttrs(
   if (a.fillMode !== undefined) attrs.fillMode = a.fillMode;
   if (a.scale9Grid !== undefined) attrs.scale9Grid = a.scale9Grid;
   const source = a.source;
-  if (source === undefined) return;
+  if (source === undefined) {
+    // 运行时数据绑定（如 List itemRenderer 里 source 由代码注入）：不可静默隐形，明示上报
+    unsupported.push("source 属性缺失（运行时数据绑定），按空占位渲染");
+    attrs.assetResolved = null;
+    return;
+  }
   attrs.source = source;
   if (!opts.resolver) {
     unsupported.push(`source="${source}" 无法解析（未提供资源解析器）`);
@@ -515,10 +705,14 @@ function layoutBounds(
   if (left !== undefined && (width !== undefined || widthPercent)) {
     x = left;
     delete attrs.left;
-  } else if (right !== undefined && width !== undefined) {
+  } else if (right !== undefined) {
     const pw = parentSize?.width;
-    if (pw !== undefined) {
+    if (width !== undefined && pw !== undefined) {
       x = pw - width! - right;
+      delete attrs.right;
+    } else if (width === undefined) {
+      // 自身宽度未知（典型：自适应文本）：CSS 右锚定，不依赖父尺寸数值
+      attrs._right = right;
       delete attrs.right;
     } else needParent("right 定位");
   } else if (hc !== undefined) {

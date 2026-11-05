@@ -11,9 +11,10 @@ export function renderImageNode(input: NodeRenderInput): string {
   const style = [baseStyle(node)];
 
   if (!asset) {
-    // 资源解析失败：虚线占位（构建期已记 unsupported，不允许伪装成功）
+    // 资源解析失败或 source 缺失（运行时数据绑定）：虚线空占位（构建期已记 unsupported，不允许伪装成功/隐形）
     if (node.bounds.width !== undefined && node.bounds.height === undefined) style.push(`height:${node.bounds.width}px`);
-    return `<div ${attrs} class="egret-node egret-missing" style="${style.join(";")}" title="${esc(String(node.attrs.source ?? "source 缺失"))}"></div>`;
+    style.push("border:1px dashed #e0642c");
+    return `<div ${attrs} class="egret-node egret-missing" style="${style.join(";")}" title="${esc(String(node.attrs.source ?? "source 缺失（运行时数据绑定）"))}"></div>`;
   }
 
   const grid = node.attrs.scale9Grid as string | undefined;

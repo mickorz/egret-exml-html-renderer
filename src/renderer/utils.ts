@@ -21,7 +21,7 @@ export function baseStyle(node: SceneNode): string {
   const a = node.attrs;
   // 自身尺寸未知时的居中约束（构建期标记 _centerH/_centerV）：CSS 百分比位移实现，偏移量并入 calc
   const parts = [
-    a._centerH !== undefined ? "left:50%" : `left:${b?.x ?? 0}px`,
+    a._centerH !== undefined ? "left:50%" : a._right !== undefined ? `right:${a._right}px` : `left:${b?.x ?? 0}px`,
     a._centerV !== undefined ? "top:50%" : `top:${b?.y ?? 0}px`,
   ];
   if (b?.width !== undefined) parts.push(`width:${b.width}px`);
@@ -42,20 +42,23 @@ export function baseStyle(node: SceneNode): string {
   return parts.join(";");
 }
 
-/** 节点溯源 data 属性（E4 DOM 语义标识，选择器与 MCP 查询共用；含组件语义溯源 P1-A） */
+/** 节点溯源 data 属性（E4 DOM 语义标识，选择器与 MCP 查询共用；含组件语义/展开源/静态模拟溯源，P1-B） */
 export function dataAttrs(node: SceneNode, sceneFile: string): string {
+  // 展开子树溯源到源组件 EXML（五元组：源文件/class/实例路径/stableKey/静态模拟标记）
+  const src = (node.srcFile ?? sceneFile).split("\\").join("/");
   const parts = [
     `data-egret-id="${esc(node.id ?? "")}"`,
     `data-egret-name="${esc(node.name ?? "")}"`,
     `data-egret-type="${esc(node.type)}"`,
     `data-egret-path="${esc(node.instancePath)}"`,
     `data-egret-key="${esc(node.stableKey)}"`,
-    `data-egret-src="${esc(sceneFile.split("\\").join("/"))}"`,
+    `data-egret-src="${esc(src)}"`,
   ];
   if (node.component) {
     parts.push(`data-egret-component="${esc(node.component.identity)}"`);
     parts.push(`data-egret-component-kind="${esc(node.component.kind)}"`);
   }
+  if (node.simulated) parts.push(`data-egret-simulated="1"`);
   return parts.join(" ");
 }
 

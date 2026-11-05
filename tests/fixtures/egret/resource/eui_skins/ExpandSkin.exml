@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<e:Skin class="ExpandSkin" width="400" height="300" xmlns:e="http://ns.egret.com/eui" xmlns:ns1="*">
+	<e:Rect fillAlpha="0.2" fillColor="0x224466" left="0" right="0" top="0" bottom="0"/>
+	<ns1:WidgetSkin id="w1" x="10" y="10"/>
+	<ns1:WidgetSkin id="w2" x="100" y="10" width="40"/>
+	<ns1:WidgetBigSkin id="big" x="10" y="60"/>
+	<ns1:GenericHost id="host" skinName="WidgetSkin" x="10" y="130"/>
+	<ns1:NoSkinComp id="noskin" x="10" y="180"/>
+	<ns1:CycleA id="cy" x="200" y="60"/>
+	<e:List id="listV" x="220" y="10" width="60" height="100" itemRendererSkinName="ItemBoxSkin">
+		<e:layout>
+			<e:VerticalLayout/>
+		</e:layout>
+	</e:List>
+	<e:List id="listH" x="10" y="220" width="400" height="30" itemRendererSkinName="ItemBoxSkin">
+		<e:layout>
+			<e:HorizontalLayout/>
+		</e:layout>
+	</e:List>
+	<e:Image id="boundImg" x="300" y="60" width="50" height="50"/>
+</e:Skin>

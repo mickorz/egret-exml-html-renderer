@@ -94,11 +94,17 @@ export class EgretWorkspace {
     return this.indexDiagnostics;
   }
 
-  /** 构建场景树（每次重新解析，刷新即生效） */
+  /** 构建场景树（每次重新解析，刷新即生效；P1-B：接入类名索引展开自定义组件与 List itemRenderer） */
   getScene(rel: string): SceneDocument | null {
     const abs = this.resolveExml(rel);
     if (!abs) return null;
-    return buildSceneFromFile(abs, { resolver: this.resolver });
+    return buildSceneFromFile(abs, {
+      resolver: this.resolver,
+      resolveSkinFile: (cls) => {
+        const entry = this.resolveSkinClass(cls);
+        return entry ? this.resolveExml(entry.file) : null;
+      },
+    });
   }
 
   /** 供静态资源服务的路径守卫：资源目录内文件绝对路径，越界返回 null */

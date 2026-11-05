@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<e:Skin class="CycleB" width="50" height="50" xmlns:e="http://ns.egret.com/eui" xmlns:ns1="*">
+	<ns1:CycleA id="toA"/>
+</e:Skin>

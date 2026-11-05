@@ -218,20 +218,104 @@ function findInScene(root: { id?: string; children: { id?: string; children: unk
   // e:layout 属性元素不再渲染为未知节点
   assert.ok(!html.includes("unknown:layout") && !html.includes("unknown:HorizontalLayout"), "layout 声明不应渲染为节点");
   assert.ok(!html.includes(">eui.layout<") && !html.includes(">eui.HorizontalLayout<"), "layout 不应出现在占位 label");
-  // 场景树：layout 声明记录在 List 节点
+  // 场景树：layout 声明记录在 List 节点；itemRendererSkinName 静态展开 3 item（P1-B）
   const listNode = findInScene(scene.root, "listA");
   assert.ok(listNode.layout && listNode.layout.className === "eui.HorizontalLayout");
   assert.equal(listNode.layout.attrs.gap, "5");
-  assert.ok(listNode.children.length === 0, "List 子节点不含 layout 包装");
+  assert.equal(listNode.children.length, 3, "List 应静态展开 3 个 item");
+  assert.ok(listNode.children.every((c: any) => c.simulated && String(c.srcFile).endsWith("SampleSkin.exml")));
+}
+
+// ---- P1-B：自定义组件递归展开 / List itemRenderer 静态展开（ExpandSkin） ----
+{
+  const { scene, ctx } = sceneOf("eui_skins/ExpandSkin.exml");
+  const html = renderHtml(scene, ctx);
+  const find = (n: any, id: string): any => (n.id === id ? n : (n.children ?? []).map((c: any) => find(c, id)).find(Boolean));
+
+  // 类名索引展开：WidgetSkin -> 容器 + 皮肤子树（皮肤声明尺寸 80x40，实例尺寸优先 w2=40）
+  const w1 = find(scene.root, "w1");
+  assert.equal(w1.type, "container");
+  assert.deepEqual(w1.bounds, { x: 10, y: 10, width: 80, height: 40 });
+  assert.equal(w1.component?.identity, "WidgetSkin");
+  assert.equal(w1.component?.kind, "exml-skin");
+  assert.ok(String(w1.srcFile).endsWith("WidgetSkin.exml"), "展开节点应指向源皮肤 EXML");
+  assert.equal(w1.children.length, 2, "皮肤子树应嫁接（Rect+Label）");
+  assert.ok(w1.children[1].attrs.text === "widget");
+  // 子节点 stableKey 前缀 = 源组件文件（实例/源路径分离）
+  assert.ok(w1.children[0].stableKey.startsWith("WidgetSkin#"), "子节点 stableKey 应以源文件名为前缀");
+  const w2 = find(scene.root, "w2");
+  assert.equal(w2.bounds.width, 40, "实例显式宽度应覆盖皮肤声明尺寸");
+
+  // 嵌套展开：WidgetBigSkin 内的 WidgetSkin 二层展开
+  const big = find(scene.root, "big");
+  const inner = find(big, "inner");
+  assert.equal(inner.type, "container");
+  assert.equal(inner.children.length, 2, "嵌套二层展开子树完整");
+  assert.ok(inner.children[1].stableKey.startsWith("WidgetSkin#"));
+
+  // skinName 属性（字符串形式）优先展开
+  const host = find(scene.root, "host");
+  assert.equal(host.component?.identity, "GenericHost");
+  assert.equal(host.component?.skinClass, "WidgetSkin");
+  assert.ok(String(host.srcFile).endsWith("WidgetSkin.exml"));
+
+  // 未解析类名：占位 + unsupported 明示
+  const noskin = find(scene.root, "noskin");
+  assert.equal(noskin.type, "custom");
+  assert.ok(noskin.unsupported.some((u: string) => u.includes("未在类名索引中找到")));
+
+  // 循环引用：CycleA -> CycleB -> CycleA 停止展开，不死循环
+  const cy = find(scene.root, "cy");
+  const toB = find(cy, "toB");
+  const toA = find(toB, "toA");
+  assert.equal(toA.type, "custom", "循环回边的节点应停止展开按占位");
+  assert.ok(toA.unsupported.some((u: string) => u.includes("循环引用")));
+  assert.ok(scene.diagnostics.some((d) => d.code === "SCENE_CUSTOM_CYCLE"));
+
+  // List itemRenderer 静态展开：3 个 item，垂直堆叠（y=0/20/40），模拟标记 + 源文件
+  const listV = find(scene.root, "listV");
+  assert.equal(listV.children.length, 3);
+  assert.deepEqual(listV.children.map((c: any) => c.bounds.y), [0, 20, 40], "垂直堆叠");
+  for (const [i, item] of listV.children.entries()) {
+    assert.equal(item.simulated, true, `item${i} 应带静态模拟标记`);
+    assert.ok(String(item.srcFile).endsWith("ItemBoxSkin.exml"));
+    assert.equal(item.component?.identity, "ItemBoxSkin");
+    assert.equal(item.children.length, 2, "item 子树完整（Rect+Label）");
+    assert.ok(item.children[1].stableKey.startsWith("ItemBoxSkin#"), "item 子节点用源文件前缀");
+    assert.equal(item.instancePath, "ExpandSkin.listV.item" + i);
+  }
+  // stableKey 唯一性（实例区分）
+  const keys = listV.children.map((c: any) => c.stableKey);
+  assert.equal(new Set(keys).size, 3);
+  // 水平堆叠（listH：x=0/60/120）
+  const listH = find(scene.root, "listH");
+  assert.deepEqual(listH.children.map((c: any) => c.bounds.x), [0, 60, 120], "水平堆叠");
+
+  // DOM 溯源：data-egret-simulated / data-egret-src 指向源皮肤
+  assert.equal((html.match(/data-egret-simulated="1"/g) ?? []).length, 6, "两个 List 共 6 个模拟 item");
+  assert.ok(/data-egret-id="w1"[\s\S]*?data-egret-src="[^"]*WidgetSkin\.exml"/.test(html), "展开节点 DOM 溯源到源皮肤");
+  assert.ok(html.includes(">widget<"), "皮肤内 Label 文本应渲染");
+  // 运行时数据绑定图（source 缺失）：明示上报 + 可见占位
+  const boundImg = find(scene.root, "boundImg");
+  assert.ok(boundImg.unsupported.some((u: string) => u.includes("source 属性缺失")));
+  const bi = html.match(/data-egret-id="boundImg"[^>]*style="([^"]*)"/);
+  assert.ok(bi && bi[1].includes("dashed"), "无 source 图应有可见占位框");
 }
 
 // ---- 真实工程冒烟（存在 GDMahjongMobile 时）：解析一个真实 EXML ----
 const REAL_ROOT = process.env.EGRET_PROJECT_ROOT ?? "E:/WorkProjects/GDMahjongMobile/gdmahjong/GDMahjongMobile";
+let realWs: EgretWorkspace | null = null;
 try {
-  const realWs = new EgretWorkspace({ rootDir: REAL_ROOT });
-  const files = realWs.listExmlFiles();
+  realWs = new EgretWorkspace({ rootDir: REAL_ROOT });
+} catch (err) {
+  // 仅工程不存在时跳过；断言失败必须暴露，不允许降级为跳过
+  console.warn(`[render-check] 跳过真实工程冒烟: ${(err as Error).message}`);
+}
+if (realWs) {
+  const realWsRef = realWs;
+  const files = realWsRef.listExmlFiles();
   assert.ok(files.length > 100, "真实工程 EXML 数量应大于 100");
-  const scene = realWs.getScene("eui_skins/BaseCard.exml");
+  const scene = realWsRef.getScene("eui_skins/BaseCard.exml");
   assert.ok(scene);
   const rootGroup = scene.root.children[0];
   assert.equal(rootGroup.type, "group");
@@ -242,16 +326,15 @@ try {
   assert.ok(firstImg.asset?.file.includes("pdk.png"));
 
   // ---- P1-A 目标组件：HometownRebateView 静态框架 ----
-  const hb = realWs.getScene("skins/homeTown/HometownRebateView.exml");
+  const hb = realWsRef.getScene("skins/homeTown/HometownRebateView.exml");
   assert.ok(hb, "HometownRebateView 场景构建失败");
-  const hbHtml = renderHtml(hb, { scene: hb, resolver: realWs.resolver, toAssetUrl: (abs) => abs });
-  // EmptyBtn 容器化：三个实例均无虚线占位
+  const hbHtml = renderHtml(hb, { scene: hb, resolver: realWsRef.resolver, toAssetUrl: (abs) => abs });
+  // EmptyBtn 容器化：视图 3 实例 + item 展开 3×2 实例，全部容器渲染无虚线
   const btns = hbHtml.match(/data-egret-component="EmptyBtn"[^>]*style="[^"]*"/g) ?? [];
-  assert.equal(btns.length, 3, "EmptyBtn 三实例应登记 container 语义");
+  assert.equal(btns.length, 9, "EmptyBtn 9 实例（视图 3 + item 展开 3×2）应登记 container 语义");
   assert.ok(btns.every((s) => !s.includes("dashed")), "EmptyBtn 不应再是虚线占位");
-  // DragonBones 动画占位：两处标注框
-  assert.equal((hbHtml.match(/data-egret-component-kind="animation"/g) ?? []).length, 2);
-  assert.ok(hbHtml.includes("[动画] Xiandinglibao_yh") && hbHtml.includes("[动画] Xiandinglibao_01"));
+  // DragonBones 动画占位：视图 2 处 + item 展开 3×4 处
+  assert.equal((hbHtml.match(/data-egret-component-kind="animation"/g) ?? []).length, 14, "动画标注框：视图 2 + item 3×4");
   // Scroller 裁剪容器
   assert.ok(/data-egret-id="_scrollSign"[^>]*overflow:hidden/.test(hbHtml), "Scroller 应为裁剪容器");
   // ArtNumberEUI 三实例登记 bitmap-number 语义
@@ -259,16 +342,39 @@ try {
   // e:layout 不再渲染为节点
   assert.ok(!hbHtml.includes("unknown:layout") && !hbHtml.includes("unknown:HorizontalLayout"));
 
+  // ---- P1-B：List itemRenderer 静态展开（三个 item 实例完整显示） ----
+  const findIn = (n: any, id: string): any => (n.id === id ? n : (n.children ?? []).map((c: any) => findIn(c, id)).find(Boolean));
+  const listAccrue = findIn(hb.root, "_listAccrue");
+  assert.ok(listAccrue, "_listAccrue 应存在");
+  assert.equal(listAccrue.children.length, 3, "应静态展开 3 个 item");
+  for (const [i, item] of listAccrue.children.entries()) {
+    assert.equal(item.simulated, true);
+    assert.ok(String(item.srcFile).endsWith("HometownRebateItemRender.exml"), `item${i} 溯源到源皮肤`);
+    assert.equal(item.component?.identity, "HometownRebateItemRenderSkin");
+    assert.equal(item.children.length, 1, "item 子树（_grpNormal）");
+    assert.ok(item.children[0].stableKey.startsWith("HometownRebateItemRender#"), "item 子节点用源文件前缀");
+    assert.deepEqual([item.bounds.width, item.bounds.height], [229.96, 480]);
+  }
+  // item 排列：水平堆叠 x=0/229.96/459.92
+  assert.deepEqual(listAccrue.children.map((c: any) => c.bounds.x).map((v: number) => Math.round(v * 100) / 100), [0, 229.96, 459.92]);
+  // item 内部结构完整：背景图/进度条/图标占位/x1 文本/箭头/目标数 5000
+  const itemJson = JSON.stringify(listAccrue.children[0]);
+  assert.ok(itemJson.includes("_imgBg") && itemJson.includes("5000") && itemJson.includes("x1"), "item 内部关键节点存在");
+  assert.ok(itemJson.includes("_btnGet"), "item 内 EmptyBtn 容器化");
+  // DOM：模拟标记 + 源文件溯源
+  assert.equal((hbHtml.match(/data-egret-simulated="1"/g) ?? []).length, 3);
+  assert.ok(/data-egret-src="[^"]*HometownRebateItemRender\.exml"/.test(hbHtml), "DOM 溯源到源皮肤");
+  // 运行时绑定图（_imgIcon1 无 source）：明示上报
+  assert.ok(itemJson.includes("source 属性缺失"), "运行时绑定图应上报");
+
   // ---- P1-A 类名索引（双数据源） ----
-  const itemRender = realWs.resolveSkinClass("HometownRebateItemRenderSkin");
+  const itemRender = realWsRef.resolveSkinClass("HometownRebateItemRenderSkin");
   assert.ok(itemRender && itemRender.source === "scan");
   assert.equal(itemRender.file, "skins/homeTown/HometownRebateItemRender.exml");
-  const artNumber = realWs.resolveSkinClass("gdmj.ArtNumber");
+  const artNumber = realWsRef.resolveSkinClass("gdmj.ArtNumber");
   assert.ok(artNumber && artNumber.source === "thm", "thm 映射应优先");
   assert.equal(artNumber.file, "skins/ArtNumber.exml");
-  assert.equal(realWs.resolveSkinClass("NoSuchSkinClass"), null);
-} catch (err) {
-  console.warn(`[render-check] 跳过真实工程冒烟: ${(err as Error).message}`);
+  assert.equal(realWsRef.resolveSkinClass("NoSuchSkinClass"), null);
 }
 
 console.log("[render-check] 全部通过");
