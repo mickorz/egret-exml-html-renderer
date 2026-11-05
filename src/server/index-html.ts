@@ -141,7 +141,7 @@ nbEl.addEventListener("click", function (e) {
   crumb.textContent = "定位类定义: " + cls;
   fetch("/api/ui-assets?class=" + encodeURIComponent(cls)).then(function (r) { return r.json(); }).then(function (res) {
     if (res.count > 0) { openFile(res.entries[0].basic.file); }
-    else { crumb.textContent = "类 " + cls + " 无定义文件（悬空引用）"; }
+    else { crumb.textContent = "类 " + cls + " 无 EXML 定义文件（代码组件或悬空引用）"; }
   });
 });
 
