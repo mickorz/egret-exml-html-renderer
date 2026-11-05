@@ -2,7 +2,7 @@
   "resources": [
     { "url": "assets/hero.png", "type": "image", "name": "hero_png" },
     { "url": "assets/panel.png", "type": "image", "name": "panel_png" },
-    { "url": "assets/atlas.json", "type": "sheet", "name": "atlas_json", "subkeys": "frame_one_png,frame_two_png,frame_trim_png" }
+    { "url": "assets/atlas.json", "type": "sheet", "name": "atlas_json", "subkeys": "frame_one_png,frame_two_png,frame_trim_png,num_0_png,num_1_png,num_2_png,num_3_png,num_4_png,num_5_png,num_6_png,num_7_png,num_8_png,num_9_png" }
   ],
   "groups": []
 }

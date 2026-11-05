@@ -42,16 +42,11 @@ export class EgretWorkspace {
     };
   }
 
-  /** 枚举资源目录下全部 EXML（相对资源目录的路径，/ 分隔） */
+  /** 枚举资源目录下全部 EXML（相对资源目录的路径，/ 分隔）；目录读取失败直接抛错，不静默丢目录 */
   listExmlFiles(): { file: string; name: string }[] {
     const out: { file: string; name: string }[] = [];
     const walk = (dir: string): void => {
-      let entries: fs.Dirent[];
-      try {
-        entries = fs.readdirSync(dir, { withFileTypes: true });
-      } catch {
-        return;
-      }
+      const entries = fs.readdirSync(dir, { withFileTypes: true });
       for (const e of entries) {
         const full = path.join(dir, e.name);
         if (e.isDirectory()) walk(full);

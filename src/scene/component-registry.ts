@@ -102,15 +102,10 @@ export function buildExmlClassIndex(
     }
   }
 
-  // 数据源 2：EXML 全量扫描（根元素 class 属性 -> 资源相对路径）
+  // 数据源 2：EXML 全量扫描（根元素 class 属性 -> 资源相对路径）；读取失败直接抛错，不静默跳过
   for (const { file } of files) {
     const abs = path.join(resourceDir, ...file.split("/"));
-    let text: string;
-    try {
-      text = fs.readFileSync(abs, "utf-8");
-    } catch {
-      continue; // 竞态删除等：跳过，listExmlFiles 是同轮扫描结果
-    }
+    const text = fs.readFileSync(abs, "utf-8");
     const cls = rootClassOf(text);
     if (!cls) continue;
     const existing = idx.get(cls);

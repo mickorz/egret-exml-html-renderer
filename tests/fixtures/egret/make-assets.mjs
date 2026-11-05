@@ -78,25 +78,26 @@ function fillRect(rgba, w, x, y, rw, rh, r, g, b, a = 255) {
   writeFileSync(join(assetsDir, "panel.png"), encodePng(32, 32, rgba));
 }
 
-// atlas.png：16x16，两帧（frame_one 左上蓝 8x8，frame_two 右上绿 8x8，下半透明留白）
+// atlas.png：80x24，帧（frame_one 左上蓝 8x8，frame_two 右上绿 8x8，frame_trim 左下带 trim 8x8，
+// num_0..num_9 数字帧行 8x8 位图数字样本，P1-C 位图数字拼合用）
 {
-  const rgba = Buffer.alloc(16 * 16 * 4);
-  fillRect(rgba, 16, 0, 0, 8, 8, 40, 80, 220);
-  fillRect(rgba, 16, 8, 0, 8, 8, 40, 200, 80);
-  writeFileSync(join(assetsDir, "atlas.png"), encodePng(16, 16, rgba));
+  const rgba = Buffer.alloc(80 * 24 * 4);
+  fillRect(rgba, 80, 0, 0, 8, 8, 40, 80, 220);
+  fillRect(rgba, 80, 8, 0, 8, 8, 40, 200, 80);
+  fillRect(rgba, 80, 2, 9, 4, 6, 220, 220, 60);
+  for (let i = 0; i < 10; i++) fillRect(rgba, 80, i * 8, 16, 8, 8, 230, 140, 40);
+  writeFileSync(join(assetsDir, "atlas.png"), encodePng(80, 24, rgba));
 }
 
 // atlas.json：texture merger 帧表
-writeFileSync(
-  join(assetsDir, "atlas.json"),
-  JSON.stringify({
-    file: "atlas.png",
-    frames: {
-      frame_one_png: { x: 0, y: 0, w: 8, h: 8, offX: 0, offY: 0, sourceW: 8, sourceH: 8 },
-      frame_two_png: { x: 8, y: 0, w: 8, h: 8, offX: 0, offY: 0, sourceW: 8, sourceH: 8 },
-      frame_trim_png: { x: 0, y: 8, w: 4, h: 6, offX: 2, offY: 1, sourceW: 8, sourceH: 8 },
-    },
-  }, null, 2),
-);
+{
+  const frames = {
+    frame_one_png: { x: 0, y: 0, w: 8, h: 8, offX: 0, offY: 0, sourceW: 8, sourceH: 8 },
+    frame_two_png: { x: 8, y: 0, w: 8, h: 8, offX: 0, offY: 0, sourceW: 8, sourceH: 8 },
+    frame_trim_png: { x: 0, y: 8, w: 4, h: 6, offX: 2, offY: 1, sourceW: 8, sourceH: 8 },
+  };
+  for (let i = 0; i < 10; i++) frames[`num_${i}_png`] = { x: i * 8, y: 16, w: 8, h: 8, offX: 0, offY: 0, sourceW: 8, sourceH: 8 };
+  writeFileSync(join(assetsDir, "atlas.json"), JSON.stringify({ file: "atlas.png", frames }, null, 2));
+}
 
 console.log("fixture 资源已生成:", assetsDir);

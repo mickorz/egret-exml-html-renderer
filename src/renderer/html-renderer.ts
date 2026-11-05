@@ -8,6 +8,7 @@ import { renderButtonNode } from "./nodes/button-node.js";
 import { renderRectNode } from "./nodes/rect-node.js";
 import { renderScrollerNode } from "./nodes/scroller-node.js";
 import { renderAnimationNode } from "./nodes/animation-node.js";
+import { renderBitmapNumberNode } from "./nodes/bitmapnumber-node.js";
 import type { NodeRenderer, RenderContext, UnsupportedItem } from "./types.js";
 import { baseStyle, dataAttrs, esc } from "./utils.js";
 
@@ -33,10 +34,11 @@ const RENDERERS: Record<string, NodeRenderer> = {
   rect: renderRectNode,
   scroller: renderScrollerNode,
   animation: renderAnimationNode,
+  bitmapnumber: renderBitmapNumberNode,
 };
 
 /** 按占位容器渲染的类型（识别但未支持运行时行为：保留子树可见，样式降级）
- *  bitmapnumber（P1-C）与 custom（P1-B）无渲染器，自动落入占位分支 */
+ *  无渲染器的类型（custom 等）自动落入占位分支 */
 const PLACEHOLDER_TYPES = new Set(["list", "datagroup", "bitmaplabel", "editabletext"]);
 
 /** 递归渲染节点；未知/未支持类型渲染为虚线占位容器（保留子节点，不静默丢失） */

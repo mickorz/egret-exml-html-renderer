@@ -272,10 +272,10 @@ function findInScene(root: { id?: string; children: { id?: string; children: unk
   assert.ok(toA.unsupported.some((u: string) => u.includes("循环引用")));
   assert.ok(scene.diagnostics.some((d) => d.code === "SCENE_CUSTOM_CYCLE"));
 
-  // List itemRenderer 静态展开：3 个 item，垂直堆叠（y=0/20/40），模拟标记 + 源文件
+  // List itemRenderer 静态展开：3 个 item，垂直堆叠（gap=5：y=0/25/50），模拟标记 + 源文件
   const listV = find(scene.root, "listV");
   assert.equal(listV.children.length, 3);
-  assert.deepEqual(listV.children.map((c: any) => c.bounds.y), [0, 20, 40], "垂直堆叠");
+  assert.deepEqual(listV.children.map((c: any) => c.bounds.y), [0, 25, 50], "垂直堆叠 gap=5");
   for (const [i, item] of listV.children.entries()) {
     assert.equal(item.simulated, true, `item${i} 应带静态模拟标记`);
     assert.ok(String(item.srcFile).endsWith("ItemBoxSkin.exml"));
@@ -291,8 +291,8 @@ function findInScene(root: { id?: string; children: { id?: string; children: unk
   const listH = find(scene.root, "listH");
   assert.deepEqual(listH.children.map((c: any) => c.bounds.x), [0, 60, 120], "水平堆叠");
 
-  // DOM 溯源：data-egret-simulated / data-egret-src 指向源皮肤
-  assert.equal((html.match(/data-egret-simulated="1"/g) ?? []).length, 6, "两个 List 共 6 个模拟 item");
+  // DOM 溯源：data-egret-simulated（两个 List 6 item + 3 个位图数字示例值模拟）
+  assert.equal((html.match(/data-egret-simulated="1"/g) ?? []).length, 9, "6 item + 3 位图数字模拟");
   assert.ok(/data-egret-id="w1"[\s\S]*?data-egret-src="[^"]*WidgetSkin\.exml"/.test(html), "展开节点 DOM 溯源到源皮肤");
   assert.ok(html.includes(">widget<"), "皮肤内 Label 文本应渲染");
   // 运行时数据绑定图（source 缺失）：明示上报 + 可见占位
@@ -300,6 +300,41 @@ function findInScene(root: { id?: string; children: { id?: string; children: unk
   assert.ok(boundImg.unsupported.some((u: string) => u.includes("source 属性缺失")));
   const bi = html.match(/data-egret-id="boundImg"[^>]*style="([^"]*)"/);
   assert.ok(bi && bi[1].includes("dashed"), "无 source 图应有可见占位框");
+}
+
+// ---- P1-C：EUI Layout 应用 + 位图数字拼合（ExpandSkin） ----
+{
+  const { scene, ctx } = sceneOf("eui_skins/ExpandSkin.exml");
+  const html = renderHtml(scene, ctx);
+  const find = (n: any, id: string): any => (n.id === id ? n : (n.children ?? []).map((c: any) => find(c, id)).find(Boolean));
+
+  // Group + HorizontalLayout：gap=3 + paddingLeft=5 + verticalAlign=middle；显式 x/y 被布局覆盖
+  const grpLay = find(scene.root, "grpLay");
+  assert.deepEqual(grpLay.children.map((c: any) => c.bounds.x), [5, 38, 71], "gap=3+paddingLeft=5 顺次排列");
+  assert.ok(grpLay.children.every((c: any) => c.bounds.y === 10), "verticalAlign=middle：(40-20)/2=10");
+  assert.ok(grpLay.children.every((c: any) => c.bounds.x < 100), "显式 x=999/888/777 应被布局覆盖");
+
+  // TileLayout：未支持明示，子节点保持原位
+  const grpTile = find(scene.root, "grpTile");
+  assert.ok(grpTile.unsupported.some((u: string) => u.includes("eui.TileLayout 未支持")));
+  assert.equal(grpTile.children[0].bounds.x, 0, "未支持布局子节点保持原位");
+
+  // 位图数字：prefix 逐位拼合（示例值 8888 -> 4 帧背景片，推进宽 sourceW）
+  const num1 = find(scene.root, "num1");
+  assert.equal(num1.type, "bitmapnumber");
+  assert.equal(num1.simulated, true, "示例值模拟标记");
+  const num1Html = html.match(/data-egret-id="num1"[^>]*>([\s\S]*?)<\/div>/)![1];
+  assert.equal((num1Html.match(/<span/g) ?? []).length, 4, "4 个数字位片");
+  assert.ok(/left:0px/.test(num1Html) && /left:8px/.test(num1Html), "位片按 sourceW=8 顺次推进");
+  assert.ok(/width:8px;height:8px/.test(num1Html), "位片尺寸 sourceW x sourceH");
+  // 旋转：rotation=-10 落 transform
+  const rot = html.match(/data-egret-id="numRot"[^>]*style="([^"]*)"/)!;
+  assert.ok(rot[1].includes("rotate(-10deg)"), "rotation=-10 应落 transform");
+  // 无 prefix：占位 + 上报
+  const np = find(scene.root, "numNoPrefix");
+  assert.ok(np.unsupported.some((u: string) => u.includes("运行时数值未知")));
+  const npHtml = html.match(/data-egret-id="numNoPrefix"[^>]*style="([^"]*)"/)!;
+  assert.ok(npHtml[1].includes("dashed"), "无 prefix 位图数字应占位");
 }
 
 // ---- 真实工程冒烟（存在 GDMahjongMobile 时）：解析一个真实 EXML ----
@@ -362,10 +397,24 @@ if (realWs) {
   assert.ok(itemJson.includes("_imgBg") && itemJson.includes("5000") && itemJson.includes("x1"), "item 内部关键节点存在");
   assert.ok(itemJson.includes("_btnGet"), "item 内 EmptyBtn 容器化");
   // DOM：模拟标记 + 源文件溯源
-  assert.equal((hbHtml.match(/data-egret-simulated="1"/g) ?? []).length, 3);
+  // DOM：模拟标记（P1-B：3 item；P1-C 又加 3 个位图数字，此处只验 item 部分，总数由 P1-C 段验 6）
+  assert.ok((hbHtml.match(/data-egret-simulated="1"/g) ?? []).length >= 3);
   assert.ok(/data-egret-src="[^"]*HometownRebateItemRender\.exml"/.test(hbHtml), "DOM 溯源到源皮肤");
   // 运行时绑定图（_imgIcon1 无 source）：明示上报
   assert.ok(itemJson.includes("source 属性缺失"), "运行时绑定图应上报");
+
+  // ---- P1-C：位图数字拼合（三处 ArtNumberEUI 按示例值渲染，无虚线占位） ----
+  for (const id of ["_labTotal", "_labCost", "_labJiazeng"]) {
+    const el = hbHtml.match(new RegExp(`data-egret-id="${id}"[\\s\\S]*?<\\/div>`))![0];
+    assert.ok(!el.includes("dashed"), `${id} 不应再是虚线占位`);
+    assert.equal((el.match(/<span/g) ?? []).length, 4, `${id} 应有 4 个数字位片`);
+    assert.ok(/data-egret-simulated="1"/.test(el), `${id} 应带模拟标记`);
+  }
+  // 旋转：_labJiazeng rotation=-10
+  const jz = hbHtml.match(/data-egret-id="_labJiazeng"[^>]*style="([^"]*)"/)![1];
+  assert.ok(jz.includes("rotate(-10deg)"), "_labJiazeng 应带 -10 度旋转");
+  // simulated 总数：3 个位图数字 + 3 个 List item
+  assert.equal((hbHtml.match(/data-egret-simulated="1"/g) ?? []).length, 6);
 
   // ---- P1-A 类名索引（双数据源） ----
   const itemRender = realWsRef.resolveSkinClass("HometownRebateItemRenderSkin");

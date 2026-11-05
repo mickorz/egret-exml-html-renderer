@@ -3,6 +3,7 @@ import { normalizeExmlFile, normalizeExmlText, type NormalizedNode } from "../pa
 import type { ExmlDiagnostic } from "../parser/exml/exml-types.js";
 import { EgretAssetResolver, type ResolvedAsset } from "../assets/egret-asset-resolver.js";
 import { componentSemanticOf, identityOf, type ComponentKind } from "./component-registry.js";
+import { applyHorizontalLayout, applyVerticalLayout, parseLayoutAttrs } from "./eui-layout.js";
 
 // Egret Scene Builder（P0-C）：EXML 语法树 -> 渲染用场景树
 // 职责边界：
@@ -255,10 +256,11 @@ function convertNode(n: NormalizedNode, ctx: BuildContext, opts: SceneOptions, f
         unsupported.push(`动画组件 ${sem.className} 静态不可还原，按标注占位渲染（fileName=${n.attrs.fileName ?? "?"}, animationName=${n.attrs.animationName ?? "?"}）`);
         ctx.diagnostics.push({ level: "warning", code: "SCENE_ANIMATION_PLACEHOLDER", message: `动画组件按占位渲染: ${n.className}（fileName=${n.attrs.fileName ?? "?"}）`, nodeId: n.attrs.id });
       } else {
-        // bitmap-number：P1-C 实现 prefix 位图数字拼合，当前按占位渲染但语义已登记可追溯
+        // bitmap-number：prefix 位图数字逐位拼合（渲染器实现），运行时数值未知按示例值静态模拟
         type = "bitmapnumber";
-        unsupported.push(`位图数字组件 ${sem.className} 按占位渲染（prefix 位图拼合 P1-C 实现，prefix=${n.attrs.prefix ?? "?"}）`);
-        ctx.diagnostics.push({ level: "warning", code: "SCENE_BITMAP_NUMBER_PLACEHOLDER", message: `位图数字组件按占位渲染: ${n.className}`, nodeId: n.attrs.id });
+        simulated = true;
+        unsupported.push(`位图数字组件 ${sem.className} 运行时数值未知，按示例值静态模拟渲染（prefix=${n.attrs.prefix ?? "?"}）`);
+        ctx.diagnostics.push({ level: "warning", code: "SCENE_BITMAP_NUMBER_PLACEHOLDER", message: `位图数字按示例值模拟: ${n.className}`, nodeId: n.attrs.id });
       }
     } else {
       // exml-skin 候选（P1-B）：类名索引展开；skinName 属性（字符串形式）优先于标签类名
@@ -295,8 +297,6 @@ function convertNode(n: NormalizedNode, ctx: BuildContext, opts: SceneOptions, f
     unsupported.push(`未知节点 ${n.raw.tag}`);
   }
   if (Object.keys(n.states).length) unsupported.push(`state 属性未应用: ${Object.keys(n.states).map((s) => `${s}(×${Object.keys(n.states[s]).length})`).join(", ")}`);
-  // 布局声明已从 children 剔除并记录到 layout 字段，但排列未应用（P1-C）——不静默丢弃，必须明示
-  if (n.layout) unsupported.push(`布局声明 ${n.layout.className} 已记录（排列 P1-C 应用）`);
 
   // ---- 属性转换 ----
   const a = n.attrs;
@@ -415,7 +415,30 @@ function convertNode(n: NormalizedNode, ctx: BuildContext, opts: SceneOptions, f
     }
     // List/DataGroup itemRendererSkinName 静态展开（P1-B：运行时数据驱动，静态模拟 N 个 item）
     if ((type === "list" || type === "datagroup") && n.attrs.itemRendererSkinName) {
-      children.push(...buildStaticItems(n, ctx, opts, childCtx, indexPath, unsupported));
+      children.push(...buildStaticItems(n, ctx, opts, childCtx, indexPath, bounds, unsupported));
+    }
+    // EUI Layout 应用（P1-C）：容器类声明 Horizontal/VerticalLayout 时重排子节点
+    // （EUI 语义：布局管理子节点位置，覆盖显式 x/y；List/DataGroup item 布局在 buildStaticItems 内应用）
+    if (n.layout && (type === "group" || type === "container" || type === "scroller")) {
+      const la = parseLayoutAttrs(n.layout.attrs);
+      if (n.layout.className === "eui.HorizontalLayout") {
+        applyHorizontalLayout(children, { width: bounds.width, height: bounds.height }, la);
+        ctx.diagnostics.push({ level: "warning", code: "SCENE_LAYOUT_APPLIED", message: `HorizontalLayout 已应用（gap=${la.gap}）`, nodeId: n.attrs.id });
+      } else if (n.layout.className === "eui.VerticalLayout") {
+        applyVerticalLayout(children, { width: bounds.width, height: bounds.height }, la);
+        ctx.diagnostics.push({ level: "warning", code: "SCENE_LAYOUT_APPLIED", message: `VerticalLayout 已应用（gap=${la.gap}）`, nodeId: n.attrs.id });
+      }
+    }
+  }
+  // 布局声明未应用时必须明示（不静默丢弃）：未支持的布局类型 / 非容器宿主
+  if (n.layout) {
+    const applied =
+      (type === "list" || type === "datagroup") && !!n.attrs.itemRendererSkinName
+        ? n.layout.className === "eui.HorizontalLayout" || n.layout.className === "eui.VerticalLayout"
+        : (type === "group" || type === "container" || type === "scroller") &&
+          (n.layout.className === "eui.HorizontalLayout" || n.layout.className === "eui.VerticalLayout");
+    if (!applied) {
+      unsupported.push(`布局 ${n.layout.className} 未支持（仅 Horizontal/Vertical），子节点保持原位`);
     }
   }
 
@@ -461,9 +484,9 @@ function loadSkinRoot(skinFile: string, ctx: BuildContext): NormalizedNode | nul
 }
 
 /**
- * List/DataGroup 静态 item 展开（P1-B）：itemRendererSkinName -> 源皮肤 -> 模拟 N 个 item。
- * 朴素排列：按 item 首选尺寸顺次堆叠（水平/垂直由布局声明决定，EUI List 无布局声明时默认垂直）；
- * gap/padding/对齐等精确布局 P1-C 应用。
+ * List/DataGroup 静态 item 展开（P1-B/P1-C）：itemRendererSkinName -> 源皮肤 -> 模拟 N 个 item。
+ * 排列（P1-C）：HorizontalLayout/VerticalLayout 精确应用（gap/padding/对齐；未声明默认垂直）；
+ * 其他布局类型按垂直堆叠近似并明示。
  * 溯源：item 节点 simulated 标记 + srcFile 指向源皮肤 EXML；子节点 stableKey 用源文件前缀。
  */
 function buildStaticItems(
@@ -472,6 +495,7 @@ function buildStaticItems(
   opts: SceneOptions,
   childCtx: BuildContext,
   indexPath: string,
+  box: { width?: number; height?: number },
   unsupported: string[],
 ): SceneNode[] {
   const cls = n.attrs.itemRendererSkinName!;
@@ -488,13 +512,12 @@ function buildStaticItems(
   }
   const pref = measurePreferred(skinRoot, opts, skinFile);
   const layoutCls = n.layout?.className ?? "";
+  const la = parseLayoutAttrs(n.layout?.attrs ?? {});
   const horizontal = layoutCls === "eui.HorizontalLayout";
   if (layoutCls !== "" && layoutCls !== "eui.HorizontalLayout" && layoutCls !== "eui.VerticalLayout") {
-    unsupported.push(`布局 ${layoutCls} 未识别，item 按垂直堆叠近似（P1-C）`);
+    unsupported.push(`布局 ${layoutCls} 未支持，item 按垂直堆叠近似`);
   }
   const items: SceneNode[] = [];
-  let x = 0;
-  let y = 0;
   for (let i = 0; i < STATIC_ITEM_COUNT; i++) {
     const itemParentSize = { width: pref.width, height: pref.height };
     const itemCtx: BuildContext = {
@@ -515,7 +538,7 @@ function buildStaticItems(
     }
     items.push({
       type: "container",
-      bounds: { x, y, width: pref.width, height: pref.height },
+      bounds: { x: 0, y: 0, width: pref.width, height: pref.height },
       attrs: {},
       native: {
         tag: "List:itemRenderer",
@@ -532,10 +555,11 @@ function buildStaticItems(
       simulated: true,
       unsupported: [`List 静态模拟 item（运行时数据驱动，示例第 ${i + 1} 项）`],
     });
-    if (horizontal) x += pref.width ?? 0;
-    else y += pref.height ?? 0;
   }
-  unsupported.push(`List 运行时数据驱动，静态模拟 ${STATIC_ITEM_COUNT} 个 item（itemRenderer=${cls}，朴素堆叠，精确布局 P1-C）`);
+  // 排列（P1-C）：按布局声明精确应用（gap/padding/对齐；EUI List 未声明布局时默认垂直）
+  if (horizontal) applyHorizontalLayout(items, box, la);
+  else applyVerticalLayout(items, box, la);
+  unsupported.push(`List 运行时数据驱动，静态模拟 ${STATIC_ITEM_COUNT} 个 item（itemRenderer=${cls}，布局 ${layoutCls || "默认垂直"} 已应用）`);
   ctx.diagnostics.push({ level: "warning", code: "SCENE_LIST_STATIC_ITEMS", message: `List 静态模拟 ${STATIC_ITEM_COUNT} 个 item: ${cls}`, nodeId: n.attrs.id });
   return items;
 }
