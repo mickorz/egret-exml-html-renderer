@@ -88,7 +88,8 @@ export function nineSliceStyle(
   const sliceTop = gy;
   const sliceRight = Math.max(0, w - gx - gw);
   const sliceBottom = Math.max(0, h - gy - gh);
-  const widthExpr = `${clampG(gy, h)}px ${clampG(gx, w)}px ${clampG(h - gy - gh, h)}px ${clampG(gx, w)}px`;
+  // CSS border-image-width 顺序 top right bottom left：右/下必须用对应边缘分量，非对称九宫格才正确
+  const widthExpr = `${clampG(sliceTop, h)}px ${clampG(sliceRight, w)}px ${clampG(sliceBottom, h)}px ${clampG(sliceLeft, w)}px`;
   const url = ctx.toAssetUrl(asset.file);
   return [
     `border-image-source:url('${url}')`,

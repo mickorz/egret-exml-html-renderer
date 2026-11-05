@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { safeResolveWithin } from "./safe-path.js";
 
 // Egret 资源解析器（P0-D）：EXML source 引用 -> 真实图片文件/图集矩形
 // Egret 资源索引以 default.res.json（及其他 *.res.json）为准，两类引用形式：
@@ -109,9 +110,9 @@ export class EgretAssetResolver {
     scan(this.resourceDir);
   }
 
-  /** res.json 的 url -> 绝对路径（url 相对资源目录） */
-  private fileOf(entry: ResJsonEntry): string {
-    return path.join(this.resourceDir, entry.url);
+  /** res.json 的 url -> 资源目录内绝对路径；越界（恶意 res.json url）或不存在返回 null */
+  private fileOf(entry: ResJsonEntry): string | null {
+    return safeResolveWithin(this.resourceDir, entry.url);
   }
 
   /** 读取图集帧表（带缓存）；atlas json 不存在或格式不符返回 null */
@@ -159,7 +160,7 @@ export class EgretAssetResolver {
     const direct = this.byName.get(src);
     if (direct && direct.type === "image") {
       const file = this.fileOf(direct);
-      if (fs.existsSync(file)) return { kind: "file", file };
+      if (file) return { kind: "file", file };
     }
 
     // 形式 3：回退查 sheet 子键
@@ -168,10 +169,9 @@ export class EgretAssetResolver {
 
     // 相对路径兜底：source 是相对 EXML 的路径（EUI 支持），仅允许落在资源目录内
     if (opts.exmlFile && (src.startsWith("./") || src.startsWith("../"))) {
-      const abs = path.normalize(path.resolve(path.dirname(opts.exmlFile), src));
-      if (abs.startsWith(this.resourceDir + path.sep) && fs.existsSync(abs)) {
-        return { kind: "file", file: abs };
-      }
+      // 统一守卫：相对 EXML 解析后仍限制在资源目录内（realpath 复核）
+      const abs = safeResolveWithin(this.resourceDir, path.relative(this.resourceDir, path.resolve(path.dirname(opts.exmlFile), src)));
+      if (abs) return { kind: "file", file: abs };
     }
     return null;
   }
@@ -194,6 +194,7 @@ export class EgretAssetResolver {
   /** sheet 记录 + 子键 -> 帧资源（读取 atlas json 取帧矩形） */
   private frameOf(sheet: ResJsonEntry, subkey: string): ResolvedAsset | null {
     const atlasJson = this.fileOf(sheet); // sheet 的 url 指向 atlas json
+    if (!atlasJson) return null;
     const frames = this.atlasFrames(atlasJson);
     const frame = frames?.[subkey];
     if (!frame) return null;

@@ -114,6 +114,36 @@ assert.equal(egretColorToCss("#00FF00"), "#00ff00");
 assert.equal(egretColorToCss("0x11223344"), "rgba(17,34,51,0.267)");
 assert.equal(egretColorToCss("red"), null);
 
+// ---- Namespace 作用域（P0.1 加固）：非 e 前缀的 EUI 组件 / 局部重定义 / 默认 namespace ----
+{
+  // 非标准前缀（ui:）指向 EUI namespace：组件与 skinName 都按 URI 识别
+  const { root } = normalizeExmlText(
+    `<e:Skin xmlns:ui="http://ns.egret.com/eui">
+       <ui:Button id="b"><ui:skinName><ui:Skin states="up"><ui:Label/></ui:Skin></ui:skinName></ui:Button>
+     </e:Skin>`,
+  );
+  const btn = root.children[0];
+  assert.equal(btn.className, "eui.Button");
+  assert.equal(btn.children[0].className, "eui.Skin");
+}
+{
+  // 局部重定义：子节点声明覆盖祖先同名前缀
+  const { root } = normalizeExmlText(
+    `<e:Skin xmlns:e="http://ns.egret.com/eui" xmlns:x="http://ns.egret.com/eui">
+       <e:Group><x:Image/></e:Group>
+     </e:Skin>`,
+  );
+  assert.equal(root.children[0].children[0].className, "eui.Image");
+}
+{
+  // 默认 namespace（无前缀标签）
+  const { root } = normalizeExmlText(
+    `<Skin xmlns="http://ns.egret.com/eui"><Label/></Skin>`,
+  );
+  assert.equal(root.className, "eui.Skin");
+  assert.equal(root.children[0].className, "eui.Label");
+}
+
 // ---- 真实 fixture 文件解析 ----
 {
   // 通过完整构建链路验证 fixture 可解析（buildSceneFromFile 在 render-check 覆盖，这里只验证解析层）

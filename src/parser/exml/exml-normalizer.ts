@@ -1,12 +1,13 @@
 import type { ExmlDiagnostic, ExmlDocument, ExmlNode } from "./exml-types.js";
-import { parseExmlFile, parseExmlText, EUI_NS } from "./exml-parser.js";
+import { parseExmlFile, parseExmlText, EUI_NS, WING_NS, TWEEN_NS } from "./exml-parser.js";
 import { plainAttributes, stateAttributes } from "./exml-attributes.js";
 
-// EXML 归一化（P0-B）：在语法树之上做轻量语义归类
-//   - 识别 namespace 前缀对应的真实 URI（e 前缀必须是 EUI_NS 才算 EUI 组件，不做前缀字符串猜测）
+// EXML 归一化（P0-B / P0.1 加固）：在语法树之上做轻量语义归类
+//   - Namespace 作用域感知：递归维护前缀 -> URI 作用域链（节点自身声明覆盖祖先），
+//     分类与 skinName 识别全部基于 URI，不依赖前缀字符串
 //   - 跳过 Wing 编辑器元数据（w:Config / w:Declarations）
 //   - 归类节点 kind：eui | wing | tween | custom | unknown
-//   - 展开内联 skinName 子节点（e:skinName 的唯一子节点是内联 Skin）
+//   - 展开内联 skinName 子节点（EUI namespace 下 skinName 的唯一子节点是内联 Skin）
 
 export type NodeKind = "eui" | "wing" | "tween" | "custom" | "unknown";
 
@@ -28,26 +29,24 @@ export interface NormalizedNode {
   excludeIn?: string;
 }
 
-/** 前缀 -> URI 查找：从节点自身声明的 xmlns 或文档级声明 */
-function nsUri(doc: ExmlDocument, node: ExmlNode, prefix: string): string {
-  // 节点自身（或祖先链）的 xmlns 声明优先；EXML 通常全声明在根
-  let cur: ExmlNode | undefined = node;
-  while (cur) {
-    const uri = cur.attributes[`xmlns:${prefix}`];
-    if (uri) return uri;
-    cur = undefined; // P0：只查节点与文档两级（真实 EXML 均声明在根，祖先链展开需要父子回链，暂无必要）
+/** 节点自身的 namespace 声明（xmlns / xmlns:*） */
+function declarationsOf(node: ExmlNode): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const [k, v] of Object.entries(node.attributes)) {
+    if (k === "xmlns") out[""] = v;
+    else if (k.startsWith("xmlns:")) out[k.slice("xmlns:".length)] = v;
   }
-  return doc.namespace[prefix] ?? "";
+  return out;
 }
 
-/** 归类单个语法节点 */
-function classify(doc: ExmlDocument, node: ExmlNode): { kind: NodeKind; className: string } {
-  const uri = nsUri(doc, node, node.prefix);
+/** 归类单个语法节点（scope 为当前作用域链：祖先声明 + 本节点声明） */
+function classify(node: ExmlNode, scope: Record<string, string>): { kind: NodeKind; className: string } {
+  const uri = scope[node.prefix] ?? "";
   if (uri === EUI_NS) {
     return { kind: "eui", className: `eui.${node.localName}` };
   }
-  if (uri === "http://ns.egret.com/wing") return { kind: "wing", className: `wing.${node.localName}` };
-  if (uri === "http://ns.egret.com/tween") return { kind: "tween", className: `tween.${node.localName}` };
+  if (uri === WING_NS) return { kind: "wing", className: `wing.${node.localName}` };
+  if (uri === TWEEN_NS) return { kind: "tween", className: `tween.${node.localName}` };
   if (uri) {
     // 自定义组件：namespace URI 通常是 "gdmj.*" / "*" / "Poker.*" 这类工程包通配
     return { kind: "custom", className: node.tag };
@@ -56,8 +55,13 @@ function classify(doc: ExmlDocument, node: ExmlNode): { kind: NodeKind; classNam
 }
 
 /** 递归归一化；wing 元数据整体跳过，tween 记录诊断后跳过 */
-function normalize(doc: ExmlDocument, node: ExmlNode, diagnostics: ExmlDiagnostic[]): NormalizedNode | null {
-  const { kind, className } = classify(doc, node);
+/**
+ * 递归归一化（P0.1 加固）：scope 为当前作用域链（祖先 xmlns 声明逐层合并，本节点声明覆盖同名前缀）。
+ * wing 元数据整体跳过，tween 记录诊断后跳过，skinName（按 URI 识别）提升其内联 Skin。
+ */
+function normalize(node: ExmlNode, scopeIn: Record<string, string>, diagnostics: ExmlDiagnostic[]): NormalizedNode | null {
+  const scope = { ...scopeIn, ...declarationsOf(node) };
+  const { kind, className } = classify(node, scope);
   if (kind === "wing") return null; // Wing IDE 元数据不是 UI
   if (kind === "tween") {
     diagnostics.push({
@@ -70,16 +74,17 @@ function normalize(doc: ExmlDocument, node: ExmlNode, diagnostics: ExmlDiagnosti
   }
   const children: NormalizedNode[] = [];
   for (const child of node.children) {
-    // e:skinName 是属性的内联写法：唯一子节点是内联 Skin，提升为普通子节点
-    if (child.prefix === "e" && child.localName === "skinName") {
+    const childScope = { ...scope, ...declarationsOf(child) };
+    // skinName 是属性的内联写法（按 EUI namespace URI 识别，不依赖前缀）：唯一子节点是内联 Skin，提升为普通子节点
+    if ((childScope[child.prefix] ?? "") === EUI_NS && child.localName === "skinName") {
       const inlineSkin = child.children[0];
       if (inlineSkin) {
-        const n = normalize(doc, inlineSkin, diagnostics);
+        const n = normalize(inlineSkin, childScope, diagnostics);
         if (n) children.push(n);
       }
       continue;
     }
-    const n = normalize(doc, child, diagnostics);
+    const n = normalize(child, childScope, diagnostics);
     if (n) children.push(n);
   }
   const attrs = plainAttributes(node);
@@ -93,7 +98,7 @@ function normalize(doc: ExmlDocument, node: ExmlNode, diagnostics: ExmlDiagnosti
 /** 文档归一化入口 */
 export function normalizeDocument(doc: ExmlDocument): { root: NormalizedNode; diagnostics: ExmlDiagnostic[] } {
   const diagnostics = [...doc.diagnostics];
-  const root = normalize(doc, doc.root, diagnostics);
+  const root = normalize(doc.root, {}, diagnostics);
   if (!root) throw new Error(`EXML 根节点被归一化剔除（根必须是 e:Skin）: ${doc.file}`);
   return { root, diagnostics };
 }

@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { EgretAssetResolver } from "../assets/egret-asset-resolver.js";
+import { safeResolveWithin } from "../assets/safe-path.js";
 import { buildSceneFromFile, type SceneDocument } from "./scene-builder.js";
 
 // Egret 工作区（P0-F）：工程信息 + EXML 枚举 + Scene 构建入口
@@ -61,11 +62,10 @@ export class EgretWorkspace {
     return out.sort((a, b) => a.file.localeCompare(b.file));
   }
 
-  /** EXML 相对路径 -> 绝对路径；越界（路径穿越）返回 null */
+  /** EXML 相对路径 -> 绝对路径；越界（路径穿越/符号链接穿透）返回 null */
   resolveExml(rel: string): string | null {
-    const abs = path.normalize(path.resolve(this.resourceDir, rel));
-    if (!abs.startsWith(this.resourceDir + path.sep)) return null;
-    if (!abs.toLowerCase().endsWith(".exml")) return null;
+    const abs = safeResolveWithin(this.resourceDir, rel);
+    if (!abs || !abs.toLowerCase().endsWith(".exml")) return null;
     return fs.existsSync(abs) ? abs : null;
   }
 
@@ -78,8 +78,7 @@ export class EgretWorkspace {
 
   /** 供静态资源服务的路径守卫：资源目录内文件绝对路径，越界返回 null */
   resolveAsset(rel: string): string | null {
-    const abs = path.normalize(path.resolve(this.resourceDir, rel));
-    if (!abs.startsWith(this.resourceDir + path.sep)) return null;
-    return fs.existsSync(abs) && fs.statSync(abs).isFile() ? abs : null;
+    const abs = safeResolveWithin(this.resourceDir, rel);
+    return abs && fs.statSync(abs).isFile() ? abs : null;
   }
 }

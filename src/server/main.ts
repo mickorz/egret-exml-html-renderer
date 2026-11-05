@@ -11,6 +11,6 @@ if (!root) {
 }
 const port = Number(process.env.PORT ?? 7789);
 
-createApp({ rootDir: path.resolve(root) }).listen(port, () => {
-  console.log(`Egret EXML 工作区已启动: http://localhost:${port}/  (工程根: ${path.resolve(root)})`);
+createApp({ rootDir: path.resolve(root) }).listen(port, "127.0.0.1", () => {
+  console.log(`Egret EXML 工作区已启动: http://127.0.0.1:${port}/  (工程根: ${path.resolve(root)})`);
 });

@@ -67,6 +67,17 @@ function fillRect(rgba, w, x, y, rw, rh, r, g, b, a = 255) {
   writeFileSync(join(assetsDir, "hero.png"), encodePng(8, 8, rgba));
 }
 
+// panel.png：32x32 非对称九宫格样本（左 10 / 右 8 / 上 8 / 下 12，中心 14x12），四边异色便于实测边缘渲染
+{
+  const rgba = Buffer.alloc(32 * 32 * 4);
+  fillRect(rgba, 32, 0, 0, 32, 32, 200, 200, 200); // 底灰
+  fillRect(rgba, 32, 0, 0, 10, 32, 255, 0, 0); // 左 10 红
+  fillRect(rgba, 32, 24, 0, 8, 32, 0, 0, 255); // 右 8 蓝（x=24..31，与 grid 右缘宽度一致）
+  fillRect(rgba, 32, 0, 0, 32, 8, 0, 200, 0); // 上 8 绿
+  fillRect(rgba, 32, 0, 20, 32, 12, 255, 255, 0); // 下 12 黄（y=20..31）
+  writeFileSync(join(assetsDir, "panel.png"), encodePng(32, 32, rgba));
+}
+
 // atlas.png：16x16，两帧（frame_one 左上蓝 8x8，frame_two 右上绿 8x8，下半透明留白）
 {
   const rgba = Buffer.alloc(16 * 16 * 4);

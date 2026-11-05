@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<e:Skin class="NineSliceSkin" width="120" height="80" xmlns:e="http://ns.egret.com/eui" xmlns:w="http://ns.egret.com/wing" xmlns:ui="http://ns.egret.com/eui" states="up,disabled">
+	<e:Image id="asym" source="panel_png" x="0" y="0" width="120" height="80" scale9Grid="10,8,14,12"/>
+	<ui:Button id="uiBtn" x="10" y="10">
+		<ui:skinName>
+			<ui:Skin states="up">
+				<ui:Label id="uiLabel" text="ui-prefix" horizontalCenter="0" verticalCenter="0"/>
+			</ui:Skin>
+		</ui:skinName>
+	</ui:Button>
+	<e:Image id="excludedDefault" source="hero_png" x="90" y="10" excludeIn="up"/>
+	<e:Image id="excludedOther" source="hero_png" x="90" y="40" excludeIn="disabled"/>
+</e:Skin>

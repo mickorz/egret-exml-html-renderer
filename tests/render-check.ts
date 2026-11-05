@@ -161,6 +161,23 @@ function sceneOf(file: string) {
   assert.ok(!bare.includes('id="egret-info"'));
 }
 
+// ---- P0.1 加固：非对称九宫格 / excludeIn / ui 前缀 skinName（NineSliceSkin） ----
+{
+  const { scene, ctx } = sceneOf("eui_skins/NineSliceSkin.exml");
+  const html = renderHtml(scene, ctx);
+  // 非对称九宫格：grid "10,8,14,12" 于 32x32 -> slice 右=8 下=12；border-image-width 右侧必须用 8 而非左侧 10
+  assert.ok(html.includes("border-image-slice:8 8 12 10 fill"));
+  assert.ok(html.includes("border-image-width:8px 8px 12px 10px"));
+  // excludeIn 含默认状态（up）-> 隐藏；不含 -> 可见
+  const hidden = html.match(/data-egret-id="excludedDefault"[^>]*style="([^"]*)"/);
+  const visible = html.match(/data-egret-id="excludedOther"[^>]*style="([^"]*)"/);
+  assert.ok(hidden && hidden[1].includes("display:none"), "excludeIn 含默认状态应隐藏");
+  assert.ok(visible && !visible[1].includes("display:none"), "excludeIn 不含默认状态应可见");
+  // ui: 前缀（同 EUI namespace）的 skinName 内联皮肤正常提升与渲染
+  assert.ok(html.includes('data-egret-id="uiBtn"'));
+  assert.ok(html.includes("ui-prefix"));
+}
+
 // ---- 真实工程冒烟（存在 GDMahjongMobile 时）：解析一个真实 EXML ----
 const REAL_ROOT = process.env.EGRET_PROJECT_ROOT ?? "E:/WorkProjects/GDMahjongMobile/gdmahjong/GDMahjongMobile";
 try {

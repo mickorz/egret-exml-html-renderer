@@ -6,7 +6,8 @@
   "scripts": {
     "render": "tsx src/poc/render.ts",
     "serve": "tsx watch src/server/main.ts",
-    "check": "tsx tests/parser-check.ts && tsx tests/render-check.ts",
+    "check": "npm run check:all",
+    "check:all": "npm run check:parser && npm run check:render && npm run check:server && npm run check:mcp && tsc --noEmit",
     "check:parser": "tsx tests/parser-check.ts",
     "check:render": "tsx tests/render-check.ts",
     "check:server": "tsx tests/server-check.ts",

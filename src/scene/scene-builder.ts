@@ -236,7 +236,8 @@ function convertNode(n: NormalizedNode, ctx: BuildContext, opts: SceneOptions, f
     if (a[key] !== undefined) attrs[key] = num(a[key]) ?? a[key];
   }
   // 忽略清单外的未知属性不再逐个上报（native.attributes 已完整保留，避免诊断噪音）
-  // includeIn 节点仅属于指定状态：不在默认状态时隐藏（诊断说明语义）
+  // 状态归属判定（EUI 语义：includeIn 与 excludeIn 同时指定时 includeIn 优先）：
+  //   includeIn 不含默认状态 -> 隐藏；excludeIn 含默认状态 -> 隐藏；两者均无法精确判定时记录上报
   if (n.includeIn !== undefined) {
     const states = n.includeIn.split(",").map((s) => s.trim());
     if (ctx.defaultState === undefined || !states.includes(ctx.defaultState)) {
@@ -244,6 +245,16 @@ function convertNode(n: NormalizedNode, ctx: BuildContext, opts: SceneOptions, f
       unsupported.push(`includeIn="${n.includeIn}" 不含默认状态，已隐藏（状态切换 P0 未支持）`);
     } else {
       unsupported.push(`includeIn="${n.includeIn}" 状态归属未应用（含默认状态，按可见渲染）`);
+    }
+  } else if (n.excludeIn !== undefined) {
+    const excluded = n.excludeIn.split(",").map((s) => s.trim());
+    if (ctx.defaultState === undefined) {
+      unsupported.push(`excludeIn="${n.excludeIn}" 无法判定默认状态，按可见渲染（状态切换 P0 未支持）`);
+    } else if (excluded.includes(ctx.defaultState)) {
+      attrs.visible = false;
+      unsupported.push(`excludeIn="${n.excludeIn}" 包含默认状态，已隐藏（状态切换 P0 未支持）`);
+    } else {
+      unsupported.push(`excludeIn="${n.excludeIn}" 状态归属未应用（不含默认状态，按可见渲染）`);
     }
   }
 

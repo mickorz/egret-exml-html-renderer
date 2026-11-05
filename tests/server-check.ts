@@ -2,6 +2,7 @@ import assert from "node:assert";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { createApp } from "../src/server/server.js";
+import { safeResolveWithin } from "../src/assets/safe-path.js";
 
 // Server 测试（P0-G）：路由 / Scene JSON / 资源静态服务 / 路径穿越防护
 
@@ -19,6 +20,15 @@ async function get(url: string): Promise<{ status: number; body: string; type: s
 }
 
 try {
+  // ---- 统一路径守卫单元断言（P0.1-03） ----
+  {
+    const resourceDir = path.join(fixtureRoot, "resource");
+    assert.ok(safeResolveWithin(resourceDir, "default.res.json"), "资源根内合法路径应放行");
+    assert.equal(safeResolveWithin(resourceDir, "../package.json"), null, "路径穿越应拒绝");
+    assert.equal(safeResolveWithin(resourceDir, "."), null, "根本身不放行");
+    assert.equal(safeResolveWithin(resourceDir, "no_such.png"), null, "不存在的文件返回 null");
+  }
+
   // 工程信息
   {
     const { status, body } = await get("/api/project");
