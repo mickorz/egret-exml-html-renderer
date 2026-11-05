@@ -5,6 +5,7 @@ import { EgretWorkspace } from "../scene/workspace.js";
 import { toSceneJson, relTo, findNodeByKey, nodeDetail } from "../scene/scene-json.js";
 import { renderHtml } from "../renderer/html-renderer.js";
 import { findComponentUsages, searchUiAssets, type UiAssetQuery } from "../scene/ui-asset-index.js";
+import { classNeighborhood, type ComponentGraph } from "../scene/component-graph.js";
 import { screenshotUrl } from "./chrome.js";
 
 // MCP 四工具的核心逻辑（P0-F）：纯函数、与传输层（stdio 协议壳）分离，便于直测
@@ -28,6 +29,14 @@ function outDir(): string {
 /** file:/// 绝对 URL（Windows 盘符与反斜杠归一） */
 function fileUrl(abs: string): string {
   return "file:///" + path.resolve(abs).replace(/\\/g, "/");
+}
+
+/** 组件关系图谱（与 HTTP /api/component-graph 同一入口）：不传 class 返回全图（可很大），传 class 返回单类邻域 */
+export function toolGetComponentGraph(ctx: McpContext, args: { class?: string }): Record<string, unknown> {
+  const ws = workspaceOf(ctx);
+  const graph = ws.getComponentGraph();
+  if (args.class) return classNeighborhood(graph, args.class);
+  return graph as unknown as Record<string, unknown>;
 }
 
 /** 列出工程内全部 EXML 文件 */

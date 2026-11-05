@@ -47,6 +47,8 @@ export interface UiAssetStructure {
   customComponents: Record<string, number>;
   /** itemRendererSkinName 引用的皮肤类名（去重） */
   itemRendererSkins: string[];
+  /** skinName 皮肤指派引用的类名（自定义组件实例的 skinName 属性，去重；P2-B 图谱第三类引用边） */
+  skinNameRefs: string[];
 }
 
 /** 资源元数据：引用了哪些外部资源 */
@@ -98,6 +100,7 @@ export function extractUiAssetMeta(file: string, root: NormalizedNode): UiAssetE
   const componentTypes: Record<string, number> = {};
   const customComponents: Record<string, number> = {};
   const itemRendererSkins = new Set<string>();
+  const skinNameRefs = new Set<string>();
   const imageSources = new Set<string>();
   const bitmapPrefixes = new Set<string>();
   const stateNames = new Set<string>();
@@ -121,6 +124,8 @@ export function extractUiAssetMeta(file: string, root: NormalizedNode): UiAssetE
     if (n.attrs.source) imageSources.add(n.attrs.source);
     // List / DataGroup 的 itemRenderer 皮肤引用
     if (n.attrs.itemRendererSkinName) itemRendererSkins.add(n.attrs.itemRendererSkinName);
+    // 自定义组件实例的皮肤指派引用（host 组件挂哪个皮肤）
+    if (n.kind === "custom" && n.attrs.skinName) skinNameRefs.add(n.attrs.skinName);
     for (const c of n.children) walk(c);
   };
   walk(root);
@@ -132,6 +137,7 @@ export function extractUiAssetMeta(file: string, root: NormalizedNode): UiAssetE
       componentTypes,
       customComponents,
       itemRendererSkins: [...itemRendererSkins].sort(),
+      skinNameRefs: [...skinNameRefs].sort(),
     },
     resources: {
       imageSources: [...imageSources].sort(),
@@ -222,11 +228,12 @@ export function searchUiAssets(entries: UiAssetEntry[], q: UiAssetQuery): UiAsse
 export function findComponentUsages(
   entries: UiAssetEntry[],
   className: string,
-): { file: string; kind: "tag" | "itemRenderer" }[] {
-  const out: { file: string; kind: "tag" | "itemRenderer" }[] = [];
+): { file: string; kind: "tag" | "itemRenderer" | "skinName" }[] {
+  const out: { file: string; kind: "tag" | "itemRenderer" | "skinName" }[] = [];
   for (const e of entries) {
     if (e.structure.customComponents[className]) out.push({ file: e.basic.file, kind: "tag" });
     else if (e.structure.itemRendererSkins.includes(className)) out.push({ file: e.basic.file, kind: "itemRenderer" });
+    else if (e.structure.skinNameRefs.includes(className)) out.push({ file: e.basic.file, kind: "skinName" });
   }
   return out;
 }

@@ -27,3 +27,7 @@
 | `GET /api/scene?file=<相对资源根路径>` | Scene JSON |
 | `GET /view?file=<...>&bare=1&focus=<stableKey>` | HTML 预览（bare 纯净模式 / focus 定位高亮） |
 | `GET /api/assets/<相对资源根路径>` | 图片/图集静态服务 |
+| `GET /api/ui-assets?class=&file=&component=` | 全工程 UI 资产索引检索（三层元数据，条件 AND 组合） |
+| `GET /api/ui-assets/usage?class=<类名>` | 反查组件类被哪些 EXML 引用 |
+| `GET /api/component-graph` | 组件关系图谱全图（节点/边/环/枢纽/统计） |
+| `GET /api/component-graph?class=<类名>` | 单类邻域（直接引用了谁、被谁引用、是否在环中） |

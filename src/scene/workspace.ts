@@ -6,6 +6,7 @@ import { buildExmlClassIndex, type ClassIndexEntry } from "./component-registry.
 import { buildSceneFromFile, type SceneDocument } from "./scene-builder.js";
 import type { ExmlDiagnostic } from "../parser/exml/exml-types.js";
 import { buildUiAssetIndex, type UiAssetIndexResult } from "./ui-asset-index.js";
+import { buildComponentGraph, classNeighborhood, type ComponentGraph } from "./component-graph.js";
 
 // Egret 工作区（P0-F）：工程信息 + EXML 枚举 + Scene 构建入口
 // HTTP 服务（src/server）与 MCP（src/mcp）共用，保证两者数据一致。
@@ -96,6 +97,11 @@ export class EgretWorkspace {
    */
   listUiAssets(): UiAssetIndexResult {
     return buildUiAssetIndex(this.resourceDir, this.listExmlFiles(), this.getClassIndex());
+  }
+
+  /** 组件关系图谱（P2-B）：以资产索引为数据源每次重建（基准秒级）；HTTP 与 MCP 共用入口 */
+  getComponentGraph(): ComponentGraph {
+    return buildComponentGraph(this.listUiAssets(), this.getClassIndex());
   }
 
   /** 构建场景树（每次重新解析，刷新即生效；P1-B：接入类名索引展开自定义组件与 List itemRenderer） */

@@ -1,6 +1,6 @@
 import path from "node:path";
 import { createInterface } from "node:readline";
-import { toolGetExmlScene, toolGetNodeDetail, toolListExmlFiles, toolPreviewExml, toolSearchUiAssets, toolFindComponentUsages } from "./tools.js";
+import { toolGetExmlScene, toolGetNodeDetail, toolListExmlFiles, toolPreviewExml, toolSearchUiAssets, toolFindComponentUsages, toolGetComponentGraph } from "./tools.js";
 
 // egret-exml-html-renderer MCP server（P0-F）
 // stdio 传输：换行分隔 JSON-RPC 2.0；实现 initialize / tools/list / tools/call
@@ -75,6 +75,14 @@ const TOOLS = [
       required: ["class"],
     },
   },
+  {
+    name: "get_component_graph",
+    description: "组件关系图谱：节点=组件类，边=三类引用（tag 标签 / itemRenderer 皮肤 / skinName 皮肤指派），含图级环检测（SCC）与枢纽排行；传 class 返回单类邻域（直接引用与被引用），不传返回全图",
+    inputSchema: {
+      type: "object",
+      properties: { class: { type: "string", description: "组件类名（不传则返回全图）" } },
+    },
+  },
 ];
 
 interface RpcMessage {
@@ -115,6 +123,8 @@ function callTool(name: string, args: Record<string, unknown>): unknown {
       });
     case "find_component_usages":
       return toolFindComponentUsages(ctx, { class: String(args.class ?? "") });
+    case "get_component_graph":
+      return toolGetComponentGraph(ctx, { class: args.class ? String(args.class) : undefined });
     default:
       throw new Error(`未知工具: ${name}`);
   }

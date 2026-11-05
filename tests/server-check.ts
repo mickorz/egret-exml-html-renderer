@@ -132,6 +132,25 @@ try {
     assert.equal(r.status, 405);
   }
 
+  // ---- P2-B 组件关系图谱路由 ----
+  {
+    const full = await get("/api/component-graph");
+    assert.equal(full.status, 200);
+    const g = JSON.parse(full.body) as { stats: { edgeCount: number; edgeKinds: { tag: number } }; cycles: string[][] };
+    assert.ok(g.stats.edgeCount > 0, "全图边数应大于 0");
+    assert.ok(g.stats.edgeKinds.tag > 0, "tag 边应存在");
+    assert.ok(g.cycles.some((c) => c.includes("CycleA") && c.includes("CycleB")), "CycleA/CycleB 应成环");
+    const nb = await get("/api/component-graph?class=ItemBoxSkin");
+    assert.equal(nb.status, 200);
+    const n = JSON.parse(nb.body) as { usedBy: { from: string; kind: string }[] };
+    assert.ok(n.usedBy.some((e) => e.from === "ExpandSkin" && e.kind === "itemRenderer"), "ItemBoxSkin 邻域应含 ExpandSkin");
+    // P2-A 索引路由（同源回归）
+    const assets = await get("/api/ui-assets?component=ArtNumberEUI");
+    assert.equal(assets.status, 200);
+    const a = JSON.parse(assets.body) as { count: number; entries: { basic: { file: string } }[] };
+    assert.equal(a.count, 3, "ArtNumberEUI 应命中 3 文件");
+  }
+
   console.log("[server-check] 全部通过");
 } finally {
   server.close();

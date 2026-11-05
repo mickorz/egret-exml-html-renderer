@@ -72,6 +72,7 @@ try {
   const names = (list.tools ?? []).map((t) => t.name).sort();
   assert.deepEqual(names, [
     "find_component_usages",
+    "get_component_graph",
     "get_exml_scene",
     "get_node_detail",
     "list_exml_files",
@@ -123,6 +124,13 @@ try {
     usage.structuredContent?.usages?.some((u) => u.file.endsWith("ExpandSkin.exml") && u.kind === "itemRenderer"),
     "反查 ItemBoxSkin 应命中 ExpandSkin",
   );
+
+  // get_component_graph（P2-B：单类邻域）
+  const nb = await rpc("tools/call", { name: "get_component_graph", arguments: { class: "ExpandSkin" } }) as {
+    structuredContent?: { uses?: { to: string; kind: string }[]; usedBy?: { from: string }[] };
+  };
+  assert.ok(nb.structuredContent?.uses?.some((e) => e.to === "ItemBoxSkin" && e.kind === "itemRenderer"), "邻域应含 itemRenderer 引用");
+  assert.ok(Array.isArray(nb.structuredContent?.usedBy), "邻域应含被引用列表");
 
   // 未知工具：明确报错
   const unknown = await rpc("tools/call", { name: "no_such_tool", arguments: {} }) as { isError?: boolean };
