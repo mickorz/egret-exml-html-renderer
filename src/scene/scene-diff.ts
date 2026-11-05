@@ -157,7 +157,13 @@ export function diffScenes(a: SceneDocument, b: SceneDocument): SceneDiff {
   // 不进入已配对节点，id 子树由第 3 步各自递归）
   diffChildren(ra, rb, diff, paired, pairPartner);
 
-  // 第 3 步：id 配对逐对报告（moved 判定此时父辈伴侣已齐：树先序保证父先于子处理）+ 递归各自无 id 子孙
+  // 第 3 步 a：id 配对先递归各自无 id 子孙（先填满全树配对伴侣表；
+  // 顺序敏感：lab 在 listH 子树内，若先报 moved 再递归，伴侣表未齐会假报跨父移动）
+  for (const p of idPairs) {
+    diffChildren(p.a, p.b, diff, paired, pairPartner);
+  }
+
+  // 第 3 步 b：moved 判定 + 属性报告（全树伴侣表已齐，顺序无关）
   for (const p of idPairs) {
     // moved 判定：A 侧父的配对侣伴不是 B 侧实际父 => 真跨父移动（instancePath 字符串不可靠：根类名不同会假报）
     const partnerOfParentA = p.parentA ? pairPartner.get(p.parentA) : rb;
@@ -176,7 +182,6 @@ export function diffScenes(a: SceneDocument, b: SceneDocument): SceneDiff {
       diff.changed.push({ node: refOf(p.b), changes });
       diff.stats.changed++;
     }
-    diffChildren(p.a, p.b, diff, paired, pairPartner);
   }
   return diff;
 }

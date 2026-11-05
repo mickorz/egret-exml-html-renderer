@@ -7,6 +7,7 @@ import { renderHtml } from "../renderer/html-renderer.js";
 import { findComponentUsages, searchUiAssets, type UiAssetQuery } from "../scene/ui-asset-index.js";
 import { classNeighborhood, type ComponentGraph } from "../scene/component-graph.js";
 import { diffScenes } from "../scene/scene-diff.js";
+import { htmlToExml } from "../writer/exml-writer.js";
 import { screenshotUrl } from "./chrome.js";
 
 // MCP 四工具的核心逻辑（P0-F）：纯函数、与传输层（stdio 协议壳）分离，便于直测
@@ -38,6 +39,11 @@ export function toolGetComponentGraph(ctx: McpContext, args: { class?: string })
   const graph = ws.getComponentGraph();
   if (args.class) return classNeighborhood(graph, args.class);
   return graph as unknown as Record<string, unknown>;
+}
+
+/** EXML 写出（P2-E）：语义 HTML -> EXML 文本，不写文件系统（与 HTTP /api/exml-write 同一服务） */
+export function toolWriteExmlFromHtml(ctx: McpContext, args: { html: string }): Record<string, unknown> {
+  return htmlToExml(args.html) as unknown as Record<string, unknown>;
 }
 
 /** 列出工程内全部 EXML 文件 */

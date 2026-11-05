@@ -7,7 +7,7 @@
     "render": "tsx src/poc/render.ts",
     "serve": "tsx watch src/server/main.ts",
     "check": "npm run check:all",
-    "check:all": "npm run check:parser && npm run check:render && npm run check:server && npm run check:mcp && npm run check:assets && npm run check:graph && npm run check:diff && tsc --noEmit",
+    "check:all": "npm run check:parser && npm run check:render && npm run check:server && npm run check:mcp && npm run check:assets && npm run check:graph && npm run check:diff && npm run check:writer && tsc --noEmit",
     "check:parser": "tsx tests/parser-check.ts",
     "check:render": "tsx tests/render-check.ts",
     "check:server": "tsx tests/server-check.ts",
@@ -15,7 +15,8 @@
     "mcp": "tsx src/mcp/main.ts",
     "check:assets": "tsx tests/ui-asset-check.ts",
     "check:graph": "tsx tests/component-graph-check.ts",
-    "check:diff": "tsx tests/scene-diff-check.ts"
+    "check:diff": "tsx tests/scene-diff-check.ts",
+    "check:writer": "tsx tests/exml-writer-check.ts"
   },
   "devDependencies": {
     "@types/node": "^26.6.5",

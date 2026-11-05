@@ -36,7 +36,7 @@ npm run check:mcp      # MCP stdio 协议
 
 ## MCP 接入
 
-项目自带 `.pi/mcp.json`（stdio JSON-RPC），八个只读工具：
+项目自带 `.pi/mcp.json`（stdio JSON-RPC），九个工具（八个只读 + 一个回写文本）：
 
 | 工具 | 作用 |
 | --- | --- |
@@ -48,6 +48,7 @@ npm run check:mcp      # MCP stdio 协议
 | `find_component_usages` | 反查组件类被哪些 EXML 引用 |
 | `get_component_graph` | 组件关系图谱（三类引用边 / SCC 环检测 / 枢纽排行；传 class 返回单类邻域） |
 | `diff_exml_scenes` | 两份 EXML 结构 diff（新增/删除/跨父移动/属性级变化） |
+| `write_exml_from_html` | 语义 HTML 回写为 EXML 文本（不写文件系统） |
 
 环境变量：`EGRET_PROJECT_ROOT`（Egret 工程根目录）。
 

@@ -8,6 +8,7 @@ import { indexHtml } from "./index-html.js";
 import { findComponentUsages, searchUiAssets, type UiAssetQuery } from "../scene/ui-asset-index.js";
 import { classNeighborhood } from "../scene/component-graph.js";
 import { diffScenes } from "../scene/scene-diff.js";
+import { htmlToExml } from "../writer/exml-writer.js";
 
 // 只读工作区服务（P0-F）：EXML 导航 + Scene JSON + 资源静态服务 + 渲染视图
 // 安全边界：所有路径参数经统一守卫 resolveExml/resolveAsset，解析结果必须仍落在资源目录内；全程只读。
@@ -45,9 +46,9 @@ export function createApp(opts: AppOptions): http.Server {
 async function route(req: http.IncomingMessage, res: http.ServerResponse, ws: EgretWorkspace): Promise<void> {
   const u = new URL(req.url ?? "/", "http://localhost");
   const p = u.pathname;
-  // 安全前提：只读
-  if (req.method !== "GET" && req.method !== "HEAD") {
-    return text(res, 405, "只读服务，仅支持 GET", "text/plain; charset=utf-8");
+  // 安全前提：只读（文件系统）；POST 仅限 /api/exml-write（接收 HTML 返回 EXML 文本，不落盘）
+  if (req.method !== "GET" && req.method !== "HEAD" && !(req.method === "POST" && p === "/api/exml-write")) {
+    return text(res, 405, "只读服务，仅支持 GET（POST 仅 /api/exml-write，不写文件）", "text/plain; charset=utf-8");
   }
 
   if (p === "/") return text(res, 200, indexHtml);
@@ -140,7 +141,41 @@ async function route(req: http.IncomingMessage, res: http.ServerResponse, ws: Eg
     return;
   }
 
+  // EXML 写出（P2-E）：POST body=JSON { html: 语义 HTML }（渲染器 bare 输出或同约定）-> 返回 EXML 文本；不写文件系统
+  if (p === "/api/exml-write" && req.method === "POST") {
+    const body = await readBody(req, 2 * 1024 * 1024);
+    try {
+      const { html } = JSON.parse(body) as { html?: string };
+      if (typeof html !== "string" || html === "") {
+        return json(res, 400, { error: "POST body 需为 JSON 且含非空 html 字段" });
+      }
+      const result = htmlToExml(html);
+      return json(res, 200, result);
+    } catch (err) {
+      return json(res, 400, { error: (err as Error).message });
+    }
+  }
+
   return text(res, 404, "未找到", "text/plain; charset=utf-8");
+}
+
+/** 读请求 body（限长，超限报错不静默截断） */
+function readBody(req: http.IncomingMessage, limit: number): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    let size = 0;
+    req.on("data", (c: Buffer) => {
+      size += c.length;
+      if (size > limit) {
+        reject(new Error(`请求体超过限制 ${limit} 字节`));
+        req.destroy();
+        return;
+      }
+      chunks.push(c);
+    });
+    req.on("end", () => resolve(Buffer.concat(chunks).toString("utf-8")));
+    req.on("error", reject);
+  });
 }
 
 function json(res: http.ServerResponse, status: number, data: unknown): void {

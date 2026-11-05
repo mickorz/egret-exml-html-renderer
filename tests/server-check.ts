@@ -4,6 +4,7 @@ import fs from "node:fs";
 import { fileURLToPath } from "node:url";
 import { createApp } from "../src/server/server.js";
 import { EgretWorkspace } from "../src/scene/workspace.js";
+import { renderHtml } from "../src/renderer/html-renderer.js";
 import { safeResolveWithin } from "../src/assets/safe-path.js";
 
 // Server 测试（P0-G）：路由 / Scene JSON / 资源静态服务 / 路径穿越防护
@@ -158,6 +159,23 @@ try {
     // 缺参数 400
     const bad = await get("/api/scene-diff?fileA=eui_skins/DiffSkinA.exml");
     assert.equal(bad.status, 400, "缺 fileB 应 400");
+    // P2-E EXML 回写路由（POST JSON { html }）：有效语义 HTML -> 200 EXML；非法 -> 400
+    const wsW = new EgretWorkspace({ rootDir: fixtureRoot });
+    const sc = wsW.getScene("eui_skins/SampleSkin.exml");
+    assert.ok(sc, "SampleSkin 场景应可构建");
+    const bare = renderHtml(sc, { scene: sc, resolver: wsW.resolver, toAssetUrl: (a) => a }, { bare: true });
+    const post = (payload: string) =>
+      fetch(`${base}/api/exml-write`, { method: "POST", headers: { "content-type": "application/json" }, body: payload }).then(async (r) => ({ status: r.status, body: await r.text() }));
+    const ok = await post(JSON.stringify({ html: bare }));
+    assert.equal(ok.status, 200, "有效语义 HTML 回写应 200");
+    const wr = JSON.parse(ok.body) as { exml: string; nodeCount: number };
+    assert.ok(wr.exml.includes('class="SampleSkin"'), "回写应含根 class");
+    assert.ok(wr.exml.includes('id="btn"'), "回写应含 btn 节点");
+    assert.ok(wr.exml.includes("<e:skinName>"), "内联按钮皮肤应重建 e:skinName 结构");
+    const badHtml = await post(JSON.stringify({ html: "<div>普通 HTML 无语义标记</div>" }));
+    assert.equal(badHtml.status, 400, "非法 HTML 应 400");
+    const badBody = await post("not-json");
+    assert.equal(badBody.status, 400, "非 JSON body 应 400");
   }
 
   console.log("[server-check] 全部通过");

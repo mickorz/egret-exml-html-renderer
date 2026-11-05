@@ -67,7 +67,7 @@ try {
   assert.equal(init.serverInfo?.name, "egret-exml-html-renderer");
   notify("notifications/initialized");
 
-  // tools/list（P2-A 新增 search_ui_assets / find_component_usages）
+  // tools/list（P2-A search_ui_assets / find_component_usages；P2-D diff_exml_scenes；P2-E write_exml_from_html）
   const list = await rpc("tools/list") as { tools?: { name: string }[] };
   const names = (list.tools ?? []).map((t) => t.name).sort();
   assert.deepEqual(names, [
@@ -79,7 +79,18 @@ try {
     "list_exml_files",
     "preview_exml",
     "search_ui_assets",
+    "write_exml_from_html",
   ]);
+
+  // write_exml_from_html（P2-E：语义 HTML 回写 EXML 文本）
+  const wt = await rpc("tools/call", { name: "write_exml_from_html", arguments: { html: `<div class="egret-stage" data-egret-tag="e:Skin" data-egret-class="eui.Skin" data-egret-attrs="{&quot;class&quot;:&quot;McpGenSkin&quot;,&quot;width&quot;:&quot;100&quot;,&quot;height&quot;:&quot;50&quot;}" style="width:100px;height:50px"><div class="egret-node" data-egret-tag="e:Label" data-egret-class="eui.Label" data-egret-attrs="{&quot;id&quot;:&quot;_lab&quot;,&quot;text&quot;:&quot;MCP 生成&quot;,&quot;x&quot;:&quot;10&quot;,&quot;y&quot;:&quot;10&quot;}"></div></div>` } }) as {
+    content?: { type: string; text?: string }[];
+  };
+  const wtText = (wt.content ?? []).map((c) => c.text ?? "").join("");
+  const wtParsed = JSON.parse(wtText) as { exml?: string; nodeCount?: number };
+  assert.ok(wtParsed.exml?.includes('class="McpGenSkin"'), "MCP 回写应含根 class");
+  assert.ok(wtParsed.exml?.includes('text="MCP 生成"'), "MCP 回写应含 label 文本");
+  assert.ok((wtParsed.nodeCount ?? 0) >= 2, "MCP 回写应报告语义节点数");
 
   // list_exml_files
   const files = await rpc("tools/call", { name: "list_exml_files", arguments: {} }) as {

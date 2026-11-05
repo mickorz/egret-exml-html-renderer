@@ -1,6 +1,6 @@
 import path from "node:path";
 import { createInterface } from "node:readline";
-import { toolGetExmlScene, toolGetNodeDetail, toolListExmlFiles, toolPreviewExml, toolSearchUiAssets, toolFindComponentUsages, toolGetComponentGraph, toolDiffExmlScenes } from "./tools.js";
+import { toolGetExmlScene, toolGetNodeDetail, toolListExmlFiles, toolPreviewExml, toolSearchUiAssets, toolFindComponentUsages, toolGetComponentGraph, toolDiffExmlScenes, toolWriteExmlFromHtml } from "./tools.js";
 
 // egret-exml-html-renderer MCP server（P0-F）
 // stdio 传输：换行分隔 JSON-RPC 2.0；实现 initialize / tools/list / tools/call
@@ -95,6 +95,17 @@ const TOOLS = [
       required: ["fileA", "fileB"],
     },
   },
+  {
+    name: "write_exml_from_html",
+    description: "EXML 写出：语义 HTML -> EXML 文本（AI 生成 UI 的回写入口）；约定：XHTML 形态、舞台根 class=egret-stage、节点携带 data-egret-tag 与 data-egret-attrs（原始 EXML 属性 JSON）；不写文件系统，只返回文本",
+    inputSchema: {
+      type: "object",
+      properties: {
+        html: { type: "string", description: "语义 HTML（渲染器 bare 输出或同约定生成）" },
+      },
+      required: ["html"],
+    },
+  },
 ];
 
 interface RpcMessage {
@@ -139,6 +150,8 @@ function callTool(name: string, args: Record<string, unknown>): unknown {
       return toolGetComponentGraph(ctx, { class: args.class ? String(args.class) : undefined });
     case "diff_exml_scenes":
       return toolDiffExmlScenes(ctx, { fileA: String(args.fileA ?? ""), fileB: String(args.fileB ?? "") });
+    case "write_exml_from_html":
+      return toolWriteExmlFromHtml(ctx, { html: String(args.html ?? "") });
     default:
       throw new Error(`未知工具: ${name}`);
   }

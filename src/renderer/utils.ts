@@ -42,7 +42,8 @@ export function baseStyle(node: SceneNode): string {
   return parts.join(";");
 }
 
-/** 节点溯源 data 属性（E4 DOM 语义标识，选择器与 MCP 查询共用；含组件语义/展开源/静态模拟溯源，P1-B） */
+/** 节点溯源 data 属性（E4 DOM 语义标识，选择器与 MCP 查询共用；含组件语义/展开源/静态模拟溯源，P1-B）
+ *  P2-E 语义回写三属性：tag/class/attrs（原始 EXML 属性 JSON 全量，回写器据此重建 EXML，不猜 DOM） */
 export function dataAttrs(node: SceneNode, sceneFile: string): string {
   // 展开子树溯源到源组件 EXML（五元组：源文件/class/实例路径/stableKey/静态模拟标记）
   const src = (node.srcFile ?? sceneFile).split("\\").join("/");
@@ -53,7 +54,13 @@ export function dataAttrs(node: SceneNode, sceneFile: string): string {
     `data-egret-path="${esc(node.instancePath)}"`,
     `data-egret-key="${esc(node.stableKey)}"`,
     `data-egret-src="${esc(src)}"`,
+    // P2-E 语义回写：原始标签 / EUI 类名 / 原始 EXML 属性全量（含 state 后缀键）
+    `data-egret-tag="${esc(node.native.tag)}"`,
+    `data-egret-class="${esc(node.native.className)}"`,
+    `data-egret-attrs="${esc(JSON.stringify(node.native.attributes))}"`,
   ];
+  // 布局声明（e:layout 属性子元素，非 XML 属性，单独携带；P2-E 回写重建）
+  if (node.layout) parts.push(`data-egret-layout="${esc(JSON.stringify(node.layout))}"`);
   if (node.component) {
     parts.push(`data-egret-component="${esc(node.component.identity)}"`);
     parts.push(`data-egret-component-kind="${esc(node.component.kind)}"`);

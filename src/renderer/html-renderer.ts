@@ -45,7 +45,13 @@ const PLACEHOLDER_TYPES = new Set(["list", "datagroup", "bitmaplabel", "editable
 function renderNode(node: SceneNode, ctx: RenderContext): string {
   if (node.type === "skin") {
     // 根节点本身不产生额外 DOM，直接渲染子节点（舞台尺寸在 stage 容器上）
-    return node.children.map((c) => renderNode(c, ctx)).join("\n    ");
+    if (node === ctx.scene.root) {
+      return node.children.map((c) => renderNode(c, ctx)).join("\n    ");
+    }
+    // 非根皮肤包装层（Button 内联 skinName / 展开皮肤根）：发标记层 DOM，
+    // 回写器据 class=egret-skin-wrap 重建 e:skinName/e:Skin 结构（否则内联皮肤包装丢失）
+    const skinAttrs = dataAttrs(node, ctx.scene.file);
+    return `<div class="egret-skin-wrap" ${skinAttrs} style="position:absolute;left:0;top:0;width:100%;height:100%">\n    ${node.children.map((c) => renderNode(c, ctx)).join("\n    ")}\n    </div>`;
   }
   if (node.unsupported.length) {
     for (const r of node.unsupported) ctx.unsupported.push({ nodeId: node.id ?? node.instancePath, reason: r });
@@ -97,7 +103,7 @@ img.egret-node { padding:0; border:none; }
 <body>
 ${bare ? "" : '<div id="egret-info">点击画布中的节点查看定位信息</div>'}
 ${listHtml}
-<div class="egret-stage" style="width:${scene.stage.width ?? 640}px;height:${scene.stage.height ?? 480}px">
+<div class="egret-stage" data-egret-src="${esc(scene.file.split("\\").join("/"))}" data-egret-key="${esc(scene.root.stableKey)}" data-egret-tag="${esc(scene.root.native.tag)}" data-egret-class="${esc(scene.root.native.className)}" data-egret-attrs="${esc(JSON.stringify(scene.root.native.attributes))}"${scene.root.layout ? ` data-egret-layout="${esc(JSON.stringify(scene.root.layout))}"` : ""} style="width:${scene.stage.width ?? 640}px;height:${scene.stage.height ?? 480}px">
     ${inner}
 </div>
 ${bare ? "" : `<script>${selectorScript()}</script>`}

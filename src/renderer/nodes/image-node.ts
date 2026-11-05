@@ -56,7 +56,7 @@ export function renderImageNode(input: NodeRenderInput): string {
       return `<div ${attrs} class="egret-node" style="${style.join(";")}"></div>`;
     }
     // scale：img 拉伸至 bounds（未指定尺寸时用图原生尺寸）
-    return `<img ${attrs} src="${esc(ctx.toAssetUrl(asset.file))}" class="egret-node" style="${style.join(";")}" alt="">`;
+    return `<img ${attrs} src="${esc(ctx.toAssetUrl(asset.file))}" class="egret-node" style="${style.join(";")}" alt="" />`;
   }
 
   // 图集子图：帧背景裁切；缺尺寸时用帧原始尺寸（sourceW/sourceH 优先于 w/h，对齐 Egret 纹理语义）
