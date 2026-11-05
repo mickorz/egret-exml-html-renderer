@@ -1,6 +1,8 @@
 # egret-exml-html-renderer
 
-将 Egret EUI 的 EXML 界面文件解析并渲染为可在浏览器直接预览的静态 HTML。
+将 Egret EUI 的 EXML 界面文件解析为场景树并渲染为浏览器可预览的静态 HTML，
+同时提供工程级 UI 资产索引、组件关系图谱、结构 Diff，以及**语义 HTML → EXML 回写**，
+形成 EXML → HTML → EXML 双向闭环（供 AI / MCP / HTTP 使用）。
 
 ```
 Egret 游戏工程（resource/）
@@ -8,12 +10,20 @@ Egret 游戏工程（resource/）
       ▼
   EXML Parser（fast-xml-parser，保留节点顺序 / Namespace / 原始属性）
       ▼
-  Scene Builder（EUI 语义归类 + 最小静态布局 + 资源解析）
+  Scene Builder（EUI 语义归类 + 最小静态布局 + 资源解析 + 自定义组件展开）
       ▼
   Scene Tree ──► Scene JSON（供 AI / MCP 查询）
       │
+      ├──► UI 资产索引（P2-A：检索 / 组件反查）
+      ├──► 组件关系图谱（P2-B：引用边 / 环检测 / 枢纽）
+      ├──► 结构 Diff（P2-D：新增 / 删除 / 跨父移动 / 属性变化）
+      │
       ▼
-  HTML Renderer（一类型一文件）──► 浏览器预览
+  HTML Renderer（一类型一文件）──► 浏览器预览 / 工作台检索定位（P2-C）
+      │
+      ▼
+  语义 HTML（data-egret-* 标注）──► EXML Writer（P2-E）──► EXML 文本
+      └──── round-trip：重新解析 → Scene Diff 验证零差异
 ```
 
 ## 快速开始
@@ -28,10 +38,9 @@ EGRET_PROJECT_ROOT=E:/path/to/YourEgretProject npm run serve
 # 单文件渲染 POC
 npx tsx src/poc/render.ts <EXML路径> --root <Egret工程根> --out demo
 
-# 自动化检查
-npm run check          # parser + render
-npm run check:server   # HTTP 服务
-npm run check:mcp      # MCP stdio 协议
+# 自动化检查（全部九套：parser / render / server / mcp / assets / graph / diff / writer + tsc）
+npm run check          # 等价于 check:all，含全部检查与类型检查
+npm run check:writer   # 单独跑 P2-E 回写 round-trip 验收
 ```
 
 ## MCP 接入
@@ -62,19 +71,40 @@ npm run check:mcp      # MCP stdio 协议
 不支持（保留节点、明确上报、不静默丢弃）：state 状态切换、includeIn/excludeIn、
 动画 tween、DataGroup/List/Scroller 运行时行为、自定义组件展开、Data Binding、完整 EUI Layout 系统。
 
+## P2-E：EXML 回写（语义 HTML → EXML）
+
+**输入必须是携带 `data-egret-*` 语义标注的 HTML**（渲染器 bare 输出或同约定），不是任意网页 DOM。
+
+接口（均不落盘，返回 EXML 文本）：
+
+- HTTP：`POST /api/exml-write`，body 为 JSON `{ "html": "..." }`（限 2MB）
+- MCP：`write_exml_from_html` 工具
+
+语义约定：根元素 `class="egret-stage"` 携带 `data-egret-tag/attrs`；语义节点携带
+`data-egret-tag`（原始 EXML 标签）+ `data-egret-attrs`（原始属性全量 JSON）；
+布局声明 `data-egret-layout`；内联按钮皮肤包装层 `class="egret-skin-wrap"`。
+XHTML 形态（元素显式闭合、img 自闭合、属性双引号）。
+
+回写边界（诚实声明）：
+
+- 文档归属按 stableKey 前缀判定：展开皮肤内容 / 静态 item / 合成元素剪枝不回写（重建时自动再生）
+- 位图数字运行时数值、List 运行时数据绑定不回写（保留组件标记与 prefix，重建按示例值重新模拟）
+- round-trip 验收：fixture 全量 + 真实工程 HometownRebateView 均结构零增删移、属性零差异
+
 ## 目录结构
 
 ```
 src/
   parser/exml/    EXML 解析（XML -> ExmlDocument -> 归一化）
-  scene/          Scene Builder + Scene JSON + Workspace
+  scene/          Scene Builder + Scene JSON + Workspace + 索引/图谱/Diff
   assets/         EgretAssetResolver（*.res.json + 图集帧）
   renderer/       HTML 渲染器（nodes/ 一类型一文件）
+  writer/         EXML 回写（语义 HTML -> EXML 文本）
   server/         只读 HTTP 工作区服务
   selection/      节点点击选择脚本
   mcp/            MCP stdio server
   poc/            单文件渲染入口
-tests/            fixtures/egret + parser/render/server/mcp 检查脚本
+tests/            fixtures/egret + 八套检查脚本（check:all 级联 + tsc）
 dev-docs/         开发过程文档（规范见 CLAUDE.md）
 docs/             读者向文档
 ```
