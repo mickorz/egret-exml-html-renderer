@@ -31,3 +31,4 @@
 | `GET /api/ui-assets/usage?class=<类名>` | 反查组件类被哪些 EXML 引用 |
 | `GET /api/component-graph` | 组件关系图谱全图（节点/边/环/枢纽/统计） |
 | `GET /api/component-graph?class=<类名>` | 单类邻域（直接引用了谁、被谁引用、是否在环中） |
+| `GET /api/scene-diff?fileA=<路径>&fileB=<路径>` | 两份 EXML 结构 diff（新增/删除/跨父移动/属性级变化） |

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<e:Skin class="DiffSkinA" width="200" height="100" xmlns:e="http://ns.egret.com/eui" xmlns:w="http://ns.egret.com/wing">
+	<e:Image id="img1" source="hero_png" x="10" y="10"/>
+	<e:Label x="100" y="10" size="20" text="旧文案"/>
+	<e:Group id="grp1" x="0" y="40">
+		<e:Image id="mv" source="atlas_json.frame_one_png" x="5" y="5"/>
+		<e:Label id="gone" text="将被删除"/>
+	</e:Group>
+	<e:Button id="btnA" label="按钮" x="150" y="60"/>
+</e:Skin>

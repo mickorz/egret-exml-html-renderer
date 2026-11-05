@@ -7,6 +7,7 @@ import { renderHtml } from "../renderer/html-renderer.js";
 import { indexHtml } from "./index-html.js";
 import { findComponentUsages, searchUiAssets, type UiAssetQuery } from "../scene/ui-asset-index.js";
 import { classNeighborhood } from "../scene/component-graph.js";
+import { diffScenes } from "../scene/scene-diff.js";
 
 // 只读工作区服务（P0-F）：EXML 导航 + Scene JSON + 资源静态服务 + 渲染视图
 // 安全边界：所有路径参数经统一守卫 resolveExml/resolveAsset，解析结果必须仍落在资源目录内；全程只读。
@@ -73,6 +74,18 @@ async function route(req: http.IncomingMessage, res: http.ServerResponse, ws: Eg
     if (component) q.componentType = component;
     const entries = Object.keys(q).length ? searchUiAssets(idx.entries, q) : idx.entries;
     return json(res, 200, { stats: idx.stats, diagnostics: idx.diagnostics, parseFailures: idx.parseFailures, count: entries.length, entries });
+  }
+
+  // 结构 diff（P2-D）：两份 EXML 的 Scene 结构差异（新增/删除/移动/属性变化，stableKey 定位）
+  if (p === "/api/scene-diff") {
+    const fileA = u.searchParams.get("fileA") ?? "";
+    const fileB = u.searchParams.get("fileB") ?? "";
+    if (!fileA || !fileB) return json(res, 400, { error: "需要 fileA 与 fileB 查询参数" });
+    const sa = ws.getScene(fileA);
+    const sb = ws.getScene(fileB);
+    if (!sa) return json(res, 404, { error: `fileA 不存在或路径越界: ${fileA}` });
+    if (!sb) return json(res, 404, { error: `fileB 不存在或路径越界: ${fileB}` });
+    return json(res, 200, diffScenes(sa, sb));
   }
 
   // 组件关系图谱（P2-B）：全图（节点/边/环/枢纽/统计）；?class=X 返回单类邻域（直接引用与被引用）

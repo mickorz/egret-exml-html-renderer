@@ -149,6 +149,15 @@ try {
     assert.equal(assets.status, 200);
     const a = JSON.parse(assets.body) as { count: number; entries: { basic: { file: string } }[] };
     assert.equal(a.count, 3, "ArtNumberEUI 应命中 3 文件");
+    // P2-D 结构 diff 路由
+    const df = await get("/api/scene-diff?fileA=eui_skins/DiffSkinA.exml&fileB=eui_skins/DiffSkinB.exml");
+    assert.equal(df.status, 200);
+    const d = JSON.parse(df.body) as { stats: { moved: number }; moved: { node: { id: string } }[] };
+    assert.equal(d.stats.moved, 1, "应报告 1 处跨父移动");
+    assert.equal(d.moved[0].node.id, "mv");
+    // 缺参数 400
+    const bad = await get("/api/scene-diff?fileA=eui_skins/DiffSkinA.exml");
+    assert.equal(bad.status, 400, "缺 fileB 应 400");
   }
 
   console.log("[server-check] 全部通过");

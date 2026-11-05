@@ -1,6 +1,6 @@
 import path from "node:path";
 import { createInterface } from "node:readline";
-import { toolGetExmlScene, toolGetNodeDetail, toolListExmlFiles, toolPreviewExml, toolSearchUiAssets, toolFindComponentUsages, toolGetComponentGraph } from "./tools.js";
+import { toolGetExmlScene, toolGetNodeDetail, toolListExmlFiles, toolPreviewExml, toolSearchUiAssets, toolFindComponentUsages, toolGetComponentGraph, toolDiffExmlScenes } from "./tools.js";
 
 // egret-exml-html-renderer MCP server（P0-F）
 // stdio 传输：换行分隔 JSON-RPC 2.0；实现 initialize / tools/list / tools/call
@@ -83,6 +83,18 @@ const TOOLS = [
       properties: { class: { type: "string", description: "组件类名（不传则返回全图）" } },
     },
   },
+  {
+    name: "diff_exml_scenes",
+    description: "结构 diff：两份 EXML 的场景结构差异（id 主键配对 + 无 id 同签名顺序配对；新增/删除/跨父移动/属性变化，属性为 flatten 路径级 from/to；stableKey 可喂给 preview 定位）",
+    inputSchema: {
+      type: "object",
+      properties: {
+        fileA: { type: "string", description: "基准版本 EXML 相对路径" },
+        fileB: { type: "string", description: "对比版本 EXML 相对路径" },
+      },
+      required: ["fileA", "fileB"],
+    },
+  },
 ];
 
 interface RpcMessage {
@@ -125,6 +137,8 @@ function callTool(name: string, args: Record<string, unknown>): unknown {
       return toolFindComponentUsages(ctx, { class: String(args.class ?? "") });
     case "get_component_graph":
       return toolGetComponentGraph(ctx, { class: args.class ? String(args.class) : undefined });
+    case "diff_exml_scenes":
+      return toolDiffExmlScenes(ctx, { fileA: String(args.fileA ?? ""), fileB: String(args.fileB ?? "") });
     default:
       throw new Error(`未知工具: ${name}`);
   }

@@ -71,6 +71,7 @@ try {
   const list = await rpc("tools/list") as { tools?: { name: string }[] };
   const names = (list.tools ?? []).map((t) => t.name).sort();
   assert.deepEqual(names, [
+    "diff_exml_scenes",
     "find_component_usages",
     "get_component_graph",
     "get_exml_scene",
@@ -112,7 +113,7 @@ try {
   const search = await rpc("tools/call", { name: "search_ui_assets", arguments: { component: "ArtNumberEUI" } }) as {
     structuredContent?: { count?: number; entries?: { basic: { file: string } }[]; stats?: { fileCount: number; entryCount: number } };
   };
-  assert.equal(search.structuredContent?.stats?.fileCount, 11, "fixture 文件数");
+  assert.equal(search.structuredContent?.stats?.fileCount, 13, "fixture 文件数（含 DiffSkinA/B）");
   assert.equal(search.structuredContent?.count, 3, "ArtNumberEUI 命中 3 文件");
   assert.ok(search.structuredContent?.entries?.every((e) => e.basic.file.endsWith(".exml")));
 
@@ -131,6 +132,14 @@ try {
   };
   assert.ok(nb.structuredContent?.uses?.some((e) => e.to === "ItemBoxSkin" && e.kind === "itemRenderer"), "邻域应含 itemRenderer 引用");
   assert.ok(Array.isArray(nb.structuredContent?.usedBy), "邻域应含被引用列表");
+
+  // diff_exml_scenes（P2-D：结构差异）
+  const df = await rpc("tools/call", { name: "diff_exml_scenes", arguments: { fileA: "eui_skins/DiffSkinA.exml", fileB: "eui_skins/DiffSkinB.exml" } }) as {
+    structuredContent?: { stats?: { moved: number; removed: number; added: number }; moved?: { node: { id: string } }[] };
+  };
+  assert.equal(df.structuredContent?.stats?.moved, 1, "应报告 1 处跨父移动（mv）");
+  assert.equal(df.structuredContent?.moved?.[0]?.node?.id, "mv");
+  assert.ok((df.structuredContent?.stats?.removed ?? 0) >= 1 && (df.structuredContent?.stats?.added ?? 0) >= 1, "应含删除与新增");
 
   // 未知工具：明确报错
   const unknown = await rpc("tools/call", { name: "no_such_tool", arguments: {} }) as { isError?: boolean };

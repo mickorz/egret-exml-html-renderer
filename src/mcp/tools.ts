@@ -6,6 +6,7 @@ import { toSceneJson, relTo, findNodeByKey, nodeDetail } from "../scene/scene-js
 import { renderHtml } from "../renderer/html-renderer.js";
 import { findComponentUsages, searchUiAssets, type UiAssetQuery } from "../scene/ui-asset-index.js";
 import { classNeighborhood, type ComponentGraph } from "../scene/component-graph.js";
+import { diffScenes } from "../scene/scene-diff.js";
 import { screenshotUrl } from "./chrome.js";
 
 // MCP 四工具的核心逻辑（P0-F）：纯函数、与传输层（stdio 协议壳）分离，便于直测
@@ -65,6 +66,16 @@ export function toolFindComponentUsages(ctx: McpContext, args: { class: string }
   const ws = workspaceOf(ctx);
   const idx = ws.listUiAssets();
   return { class: args.class, usages: findComponentUsages(idx.entries, args.class) };
+}
+
+/** 结构 diff（与 HTTP /api/scene-diff 同一服务）：两份 EXML 的结构差异（新增/删除/移动/属性变化） */
+export function toolDiffExmlScenes(ctx: McpContext, args: { fileA: string; fileB: string }): Record<string, unknown> {
+  const ws = workspaceOf(ctx);
+  const sa = ws.getScene(args.fileA);
+  if (!sa) throw new Error(`fileA 不存在或路径越界: ${args.fileA}`);
+  const sb = ws.getScene(args.fileB);
+  if (!sb) throw new Error(`fileB 不存在或路径越界: ${args.fileB}`);
+  return diffScenes(sa, sb) as unknown as Record<string, unknown>;
 }
 
 /** 获取 EXML 的 Scene JSON（与 HTTP /api/scene 同一份数据） */
