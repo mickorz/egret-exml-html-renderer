@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<e:Skin class="LayoutSkin" width="200" height="100" xmlns:e="http://ns.egret.com/eui" xmlns:w="http://ns.egret.com/wing">
+	<e:Rect id="fillBg" left="0" top="0" right="0" bottom="0" fillColor="0x222222" fillAlpha="1"/>
+	<e:Image id="anchorLeft" source="hero_png" left="10" verticalCenter="0"/>
+	<e:Image id="anchorRight" source="hero_png" right="5" y="10"/>
+	<e:Label id="pctLabel" text="pct" width="50%" y="10" x="0" height="20" textAlign="center"/>
+</e:Skin>

@@ -1,0 +1,35 @@
+{
+  "file": "atlas.png",
+  "frames": {
+    "frame_one_png": {
+      "x": 0,
+      "y": 0,
+      "w": 8,
+      "h": 8,
+      "offX": 0,
+      "offY": 0,
+      "sourceW": 8,
+      "sourceH": 8
+    },
+    "frame_two_png": {
+      "x": 8,
+      "y": 0,
+      "w": 8,
+      "h": 8,
+      "offX": 0,
+      "offY": 0,
+      "sourceW": 8,
+      "sourceH": 8
+    },
+    "frame_trim_png": {
+      "x": 0,
+      "y": 8,
+      "w": 4,
+      "h": 6,
+      "offX": 2,
+      "offY": 1,
+      "sourceW": 8,
+      "sourceH": 8
+    }
+  }
+}

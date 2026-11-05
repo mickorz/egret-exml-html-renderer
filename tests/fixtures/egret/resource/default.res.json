@@ -1,0 +1,7 @@
+{
+  "resources": [
+    { "url": "assets/hero.png", "type": "image", "name": "hero_png" },
+    { "url": "assets/atlas.json", "type": "sheet", "name": "atlas_json", "subkeys": "frame_one_png,frame_two_png,frame_trim_png" }
+  ],
+  "groups": []
+}

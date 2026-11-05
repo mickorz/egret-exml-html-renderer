@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<e:Skin class="UnknownSkin" width="100" height="100" xmlns:e="http://ns.egret.com/eui" xmlns:w="http://ns.egret.com/wing" xmlns:ns1="*">
+	<e:Scroller id="scroll1" x="0" y="0" width="100" height="80">
+		<e:Group id="content" width="100" height="200">
+			<e:Label id="deep" text="inside" x="5" y="5"/>
+		</e:Group>
+	</e:Scroller>
+	<ns1:ArtNumberEUI id="art1" x="0" y="85"/>
+</e:Skin>
