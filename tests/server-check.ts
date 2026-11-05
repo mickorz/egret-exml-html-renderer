@@ -1,5 +1,6 @@
 import assert from "node:assert";
 import path from "node:path";
+import fs from "node:fs";
 import { fileURLToPath } from "node:url";
 import { createApp } from "../src/server/server.js";
 import { safeResolveWithin } from "../src/assets/safe-path.js";
@@ -13,6 +14,13 @@ const server = createApp({ rootDir: fixtureRoot });
 await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
 const addr = server.address();
 const base = `http://127.0.0.1:${(addr as { port: number }).port}`;
+
+// ---- 符号链接穿越回归环境（P0.1 补充）：资源目录内软链指向外部目录 ----
+// Windows 普通权限只能建 directory junction；Linux 用 dir symlink。两者 realpath 行为一致。
+const linkDir = path.join(fixtureRoot, "resource", "leak-test");
+fs.mkdirSync(linkDir, { recursive: true });
+const link = path.join(linkDir, "evildir");
+fs.symlinkSync(fixtureRoot, link, process.platform === "win32" ? "junction" : "dir");
 
 async function get(url: string): Promise<{ status: number; body: string; type: string }> {
   const r = await fetch(base + url);
@@ -93,6 +101,14 @@ try {
     // 路径穿越
     const evil = await get("/api/assets/../../package.json");
     assert.equal(evil.status, 404);
+    // 符号链接穿透：资源目录内软链指向外部文件必须拒绝（realpath 复核）
+    const leak = await get("/api/assets/leak-test/evildir/package.json");
+    assert.equal(leak.status, 404, "符号链接穿透应拒绝");
+    const leakDeep = await get("/api/assets/leak-test/evildir/tsconfig.json");
+    assert.equal(leakDeep.status, 404, "符号链接穿透（深层文件）应拒绝");
+    // 对照：软链落点若真实路径恰好在资源目录内，则应放行（leak-test/evildir/resource/...）
+    const okThrough = await get("/api/assets/leak-test/evildir/resource/default.res.json");
+    assert.equal(okThrough.status, 200, "真实路径在资源目录内的软链访问应放行");
   }
 
   // 写方法拒绝
@@ -104,4 +120,11 @@ try {
   console.log("[server-check] 全部通过");
 } finally {
   server.close();
+  // 清理符号链接（先删链接本体，再删包装目录；不动软链目标）
+  try {
+    fs.rmSync(link, { force: true });
+    fs.rmSync(linkDir, { recursive: true, force: true });
+  } catch {
+    // 清理失败不影响测试结果
+  }
 }
