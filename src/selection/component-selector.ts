@@ -36,6 +36,7 @@ export function selectorScript(): string {
     if (selected) selected.classList.remove("egret-selected");
     selected = el;
     el.classList.add("egret-selected");
+    if (el === hovered) clearHover(); // 选中（金框）优先，清除 hover 蓝框
   }
   function clearSelection(notify) {
     if (selected) {
@@ -67,6 +68,38 @@ export function selectorScript(): string {
     if (info) info.textContent = "选中: " + JSON.stringify(data);
     console.log("[egret-select]", data);
     postToParent({ type: "NODE_SELECTED", key: data.key, id: data.id, name: data.name, nodeType: data.type });
+  });
+
+  // 悬停提示（P3-C）：蓝框临时提示 + iframe 内 Tooltip（名称/类型/渲染尺寸）；
+  // 不触发 Selection Store、不改 Inspector；选中节点（金框）不再量示 hover，两状态视觉区分
+  var hovered = null;
+  var tip = document.createElement("div");
+  tip.className = "egret-tooltip";
+  tip.style.display = "none";
+  document.body.appendChild(tip);
+  function clearHover() {
+    if (hovered) { hovered.classList.remove("egret-hover"); hovered = null; }
+    tip.style.display = "none";
+  }
+  document.addEventListener("mouseover", function (e) {
+    var el = e.target.closest ? e.target.closest("[data-egret-key]") : null;
+    if (!el || el === hovered) { if (!el) clearHover(); return; }
+    clearHover();
+    if (el.classList.contains("egret-selected")) return; // 已选中（金框）不再量示 hover
+    hovered = el;
+    el.classList.add("egret-hover");
+    var id = el.dataset.egretId || el.dataset.egretName || "";
+    var label = (el.dataset.egretType || "?") + (id ? " " + id : "");
+    tip.textContent = label + "  " + (el.offsetWidth || 0) + " x " + (el.offsetHeight || 0) + "（渲染尺寸）";
+    tip.style.display = "block";
+    tip.style.left = Math.min(e.clientX + 14, window.innerWidth - tip.offsetWidth - 4) + "px";
+    tip.style.top = Math.min(e.clientY + 14, window.innerHeight - tip.offsetHeight - 4) + "px";
+  });
+  document.addEventListener("mouseout", function (e) {
+    if (!hovered) return;
+    var to = e.relatedTarget;
+    if (to && to.closest && to.closest("[data-egret-key]") === hovered) return; // 节点内移动
+    clearHover();
   });
 
   document.addEventListener("keydown", function (e) {

@@ -96,6 +96,8 @@ body { background:#2b2b2b; margin:0; padding:${bare ? 0 : 16}px; font-family:san
 .egret-node { position:absolute; box-sizing:border-box; }
 img.egret-node { padding:0; border:none; }
 .egret-selected { outline:2px solid #ffd666 !important; box-shadow:0 0 10px #ffd666 !important; z-index:9998; }
+.egret-hover { outline:2px solid #4a9eff !important; z-index:9997; } /* 悬停临时提示（蓝框）：不触发选择，与选中（金框）视觉区分 */
+.egret-tooltip { position:fixed; background:rgba(20,30,45,.92); color:#cfe6ff; border:1px solid #4a9eff; border-radius:3px; padding:3px 8px; font-size:12px; pointer-events:none; z-index:10001; max-width:340px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 #egret-info { position:fixed; left:0; top:0; right:0; background:rgba(0,0,0,.78); color:#8ee6ff; padding:6px 12px; font-size:12px; z-index:10000; }
 .unsupported-list { position:fixed; left:0; bottom:0; right:0; background:rgba(0,0,0,.78); color:#ffd666; padding:6px 12px; font-size:12px; max-height:140px; overflow:auto; z-index:10000; }
 </style>
