@@ -209,7 +209,63 @@ export function inspectorScript(): string {
     body.appendChild(preBlock(nativeAttrs(n)));
     return body;
   }
-  function renderDiagnostics(n) { return null; } // P2-D
+  // Diagnostics 匹配优先级（评审修正四）：
+  //   ① stableKey（诊断未携带，当前不可用）② instancePath（诊断未携带，当前不可用）
+  //   ③ nodeId（id 存在且全文档唯一时关联）④ 否则不绑定，仅文档级展示。禁止 name 模糊匹配
+  function matchNodeDiagnostics(n, doc) {
+    var diags = (doc && doc.diagnostics) || [];
+    if (!diags.length || !n.id) return [];
+    // 全文档同 id 计数（合成展开会重复 id：重复时不关联，保守落文档级）
+    var same = 0;
+    ED.index.forEach(function (v) {
+      if (v.node && v.node.id === n.id) same++;
+    });
+    if (same !== 1) return [];
+    return diags.filter(function (d) { return d && d.nodeId === n.id; });
+  }
+  function diagRow(d) {
+    var row = document.createElement("div");
+    row.className = "diag " + (d.level === "error" ? "diag-err" : "diag-warn");
+    var lv = document.createElement("span");
+    lv.className = "lv";
+    lv.textContent = "[" + (d.level || "info") + "] ";
+    var tx = document.createElement("span");
+    tx.textContent = (d.code || "") + " " + (d.message || "");
+    row.appendChild(lv);
+    row.appendChild(tx);
+    return row;
+  }
+  function renderDiagnostics(n) {
+    var doc = ED.doc;
+    var nodeDiags = (doc && !doc.error) ? matchNodeDiagnostics(n, doc) : [];
+    var selfNotes = [];
+    (n.unsupported || []).forEach(function (u) { selfNotes.push({ level: "warning", code: "SCENE_NODE_UNSUPPORTED", message: u }); });
+    if (n.simulated) selfNotes.push({ level: "info", code: "SCENE_NODE_SIMULATED", message: "静态预览模拟节点（运行时数据驱动）" });
+    var allDiags = (doc && doc.diagnostics) || [];
+    // id 非唯一但文档级存在同 nodeId 诊断：显式提示不绑定原因（避免「文档里有却未关联」疑惑）
+    var dupHit = n.id && !nodeDiags.length && allDiags.some(function (d) { return d && d.nodeId === n.id; }) && (function () {
+      var same = 0; ED.index.forEach(function (v) { if (v.node && v.node.id === n.id) same++; }); return same !== 1;
+    })();
+    if (!nodeDiags.length && !selfNotes.length && !allDiags.length && !dupHit) return null; // 全无诊断：整组隐藏
+    var body = document.createDocumentFragment();
+    if (selfNotes.length || nodeDiags.length) {
+      body.appendChild(sub("当前节点相关（" + (selfNotes.length + nodeDiags.length) + "）"));
+      selfNotes.forEach(function (d) { body.appendChild(diagRow(d)); });
+      nodeDiags.forEach(function (d) { body.appendChild(diagRow(d)); });
+      if (n.id && !nodeDiags.length) {
+        var same = 0;
+        ED.index.forEach(function (v) { if (v.node && v.node.id === n.id) same++; });
+        if (same !== 1) body.appendChild(emptyNote("id 非全文档唯一（" + same + " 处，合成展开重复），诊断不绑定节点，见文档级"));
+      }
+    } else if (dupHit) {
+      body.appendChild(sub("当前节点相关（0）"));
+      body.appendChild(emptyNote("id 非全文档唯一（合成展开重复），诊断不绑定节点，见文档级"));
+    }
+    body.appendChild(sub("文档级 Diagnostics（全部 " + allDiags.length + "）"));
+    if (allDiags.length) allDiags.forEach(function (d) { body.appendChild(diagRow(d)); });
+    else body.appendChild(emptyNote("无诊断"));
+    return body;
+  }
 
   var GROUPS = [
     { id: "basic", title: "Basic 节点身份", render: renderBasic },

@@ -87,6 +87,10 @@ body { font-family:sans-serif; background:#222; color:#ddd; display:flex; flex-d
 #inspector .insp-head { padding:5px 8px; color:#ffd666; background:#262626; border-bottom:1px solid #333; }
 #inspector .insp-head .badge { margin-left:6px; }
 #inspector .insp-sub { padding:4px 8px 2px 20px; color:#7ec6ff; font-size:11px; }
+#inspector .diag { padding:2px 8px 2px 20px; line-height:1.5; }
+#inspector .diag .lv { color:#888; }
+#inspector .diag-warn { color:#ffb96b; }
+#inspector .diag-err { color:#ff7d66; }
 #inspector .none { color:#666; padding:2px 8px 2px 20px; }
 #inspector .grp { border-bottom:1px solid #333; }
 #inspector .grp-head { display:flex; align-items:center; gap:6px; padding:5px 8px; cursor:pointer; color:#8ee6ff; background:#262626; }
