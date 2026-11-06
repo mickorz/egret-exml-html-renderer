@@ -106,6 +106,8 @@ interface BuildContext {
   parentPath: string;
   keyPrefix: string;
   indexPath: string;
+  /** 当前文档根 EXML 绝对路径（P4-A0 修复：节点所属文件 != 根文件时输出 srcFile 溯源） */
+  rootFile: string;
   /** 父节点已解析尺寸（最小静态布局依据）；根节点无父 */
   parentSize?: { width?: number; height?: number };
   diagnostics: ExmlDiagnostic[];
@@ -152,6 +154,7 @@ function buildScene(root: NormalizedNode, diagnostics: ExmlDiagnostic[], file: s
     parentPath: skinClass,
     keyPrefix: path.basename(file, ".exml"),
     indexPath: "",
+    rootFile: file,
     diagnostics,
     // EUI 缺省态 = states 列表首项
     defaultState: root.attrs.states?.split(",")[0]?.trim(),
@@ -223,7 +226,9 @@ function convertNode(n: NormalizedNode, ctx: BuildContext, opts: SceneOptions, f
   // P1-B 展开状态：皮肤源文件 + 归一化树（展开后子树来自源组件 EXML）
   let expandSkinFile: string | null = null;
   let expandSkinRoot: NormalizedNode | null = null;
-  let srcFile: string | undefined;
+  // 节点声明溯源（P4-A0 修复）：本节点所属源文件（展开皮肤/静态 item 的内容节点）!= 根文件时输出；
+  // exml-skin 展开根在下方分支覆盖为自身皮肤文件；顶层与当前文档声明的节点为 undefined
+  let srcFile: string | undefined = file !== ctx.rootFile ? file : undefined;
   let simulated: boolean | undefined;
   if (n.kind === "eui") {
     type = EUI_TYPE_MAP[n.raw.localName]
@@ -372,6 +377,7 @@ function convertNode(n: NormalizedNode, ctx: BuildContext, opts: SceneOptions, f
     parentPath: type === "skin" ? ctx.parentPath : `${ctx.parentPath}.${name ?? type}`,
     keyPrefix: ctx.keyPrefix,
     indexPath: indexPath ? `${indexPath}` : "0",
+    rootFile: ctx.rootFile,
     diagnostics: ctx.diagnostics,
     defaultState: ctx.defaultState,
     resolveSkinFile: ctx.resolveSkinFile,
@@ -389,6 +395,7 @@ function convertNode(n: NormalizedNode, ctx: BuildContext, opts: SceneOptions, f
       parentPath: childCtx.parentPath,
       keyPrefix: path.basename(expandSkinFile, ".exml"),
       indexPath: "",
+      rootFile: ctx.rootFile,
       parentSize: childParentSize,
       diagnostics: ctx.diagnostics,
       defaultState: expandSkinRoot.attrs.states?.split(",")[0]?.trim(),
@@ -524,6 +531,7 @@ function buildStaticItems(
       parentPath: `${childCtx.parentPath}.item${i}`,
       keyPrefix: path.basename(skinFile, ".exml"),
       indexPath: "",
+      rootFile: ctx.rootFile,
       parentSize: itemParentSize,
       diagnostics: ctx.diagnostics,
       defaultState: skinRoot.attrs.states?.split(",")[0]?.trim(),
