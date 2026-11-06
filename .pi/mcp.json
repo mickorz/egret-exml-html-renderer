@@ -6,7 +6,8 @@
       "env": {
         "EGRET_PROJECT_ROOT": "E:/WorkProjects/GDMahjongMobile/gdmahjong/GDMahjongMobile"
       },
-      "description": "Egret EUI 工程只读工具：列出 EXML 文件、获取 Scene JSON、渲染 EXML 为 HTML、Chrome headless 截图验证、节点详情查询"
+      "exposure": "direct",
+      "description": "Egret EUI 工程只读工具：列出 EXML 文件、获取 Scene JSON、渲染 EXML 为 HTML、Chrome headless 截图验证、节点详情查询、资产索引检索、组件引用反查、组件关系图、场景差异对比"
     }
   }
 }
