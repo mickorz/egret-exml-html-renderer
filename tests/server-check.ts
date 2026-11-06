@@ -20,6 +20,7 @@ const base = `http://127.0.0.1:${(addr as { port: number }).port}`;
 // ---- 符号链接穿越回归环境（P0.1 补充）：资源目录内软链指向外部目录 ----
 // Windows 普通权限只能建 directory junction；Linux 用 dir symlink。两者 realpath 行为一致。
 const linkDir = path.join(fixtureRoot, "resource", "leak-test");
+fs.rmSync(linkDir, { recursive: true, force: true }); // 幂等清理上一轮残留
 fs.mkdirSync(linkDir, { recursive: true });
 const link = path.join(linkDir, "evildir");
 fs.symlinkSync(fixtureRoot, link, process.platform === "win32" ? "junction" : "dir");
@@ -30,6 +31,20 @@ async function get(url: string): Promise<{ status: number; body: string; type: s
 }
 
 try {
+
+  // ---- P3-A 编辑器页面与 rootKey ----
+  {
+    const page = await get("/");
+    assert.equal(page.status, 200, "/ 应返回编辑器页面");
+    assert.ok(page.body.includes('id="left"') && page.body.includes('id="canvas-col"') && page.body.includes('id="right"'), "三栏布局标记应存在（left/canvas-col/right）");
+    assert.ok(page.body.includes('id="proj-tree"') && page.body.includes('id="scene-tree"') && page.body.includes('id="frame"'), "工程树/场景树/iframe 标记应存在");
+    const sc = await get("/api/scene?file=eui_skins/SampleSkin.exml");
+    assert.equal(sc.status, 200);
+    const scj = JSON.parse(sc.body) as { rootKey?: string; className: string };
+    assert.equal(typeof scj.rootKey, "string", "scene JSON 应含 rootKey（P3-A 树根行身份）");
+    assert.ok(scj.rootKey && scj.rootKey.startsWith("SampleSkin#"), "rootKey 应为根 Skin 的 stableKey");
+  }
+
   // ---- P1-A 类名索引（fixture：thm.json 登记 SampleSkin -> thm 优先；未登记类回退 scan） ----
   {
     const ws2 = new EgretWorkspace({ rootDir: fixtureRoot });
@@ -185,7 +200,7 @@ try {
   try {
     fs.rmSync(link, { force: true });
     fs.rmSync(linkDir, { recursive: true, force: true });
-  } catch {
-    // 清理失败不影响测试结果
+  } catch (err) {
+    console.error("[server-check] 符号链接清理失败（不影响测试结果，但会阻塞下轮运行）:", err);
   }
 }

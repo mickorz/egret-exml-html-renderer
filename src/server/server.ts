@@ -4,7 +4,7 @@ import fs from "node:fs";
 import { EgretWorkspace } from "../scene/workspace.js";
 import { toSceneJson, relTo } from "../scene/scene-json.js";
 import { renderHtml } from "../renderer/html-renderer.js";
-import { indexHtml } from "./index-html.js";
+import { editorPageHtml } from "../editor/editor-page.js";
 import { findComponentUsages, searchUiAssets, type UiAssetQuery } from "../scene/ui-asset-index.js";
 import { classNeighborhood } from "../scene/component-graph.js";
 import { diffScenes } from "../scene/scene-diff.js";
@@ -51,7 +51,7 @@ async function route(req: http.IncomingMessage, res: http.ServerResponse, ws: Eg
     return text(res, 405, "只读服务，仅支持 GET（POST 仅 /api/exml-write，不写文件）", "text/plain; charset=utf-8");
   }
 
-  if (p === "/") return text(res, 200, indexHtml);
+  if (p === "/") return text(res, 200, editorPageHtml());
 
   // 工程信息
   if (p === "/api/project") {

@@ -40,11 +40,13 @@ function cleanAttrs(attrs: Record<string, unknown>): Record<string, unknown> {
   return rest;
 }
 
-/** 场景树 -> 结构化 JSON（undefined 字段由 JSON.stringify 自动剔除）；nodes 为根 Skin 的直接子节点（真实 UI 节点） */
+/** 场景树 -> 结构化 JSON（undefined 字段由 JSON.stringify 自动剔除）；nodes 为根 Skin 的直接子节点（真实 UI 节点）
+ *  rootKey 为根 Skin 的 stableKey（P3-A 增补：Scene Tree 根行身份 + 点击舞台背景可映射回树） */
 export function toSceneJson(scene: SceneDocument, opts: SceneJsonOptions = {}): Record<string, unknown> {
   return {
     file: opts.relativize ? opts.relativize(scene.file) : scene.file,
     className: scene.className,
+    rootKey: scene.root.stableKey,
     stage: scene.stage,
     diagnostics: scene.diagnostics,
     nodes: scene.root.children.map((n) => nodeJson(n, opts)),
