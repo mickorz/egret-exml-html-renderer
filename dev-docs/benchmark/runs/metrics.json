@@ -1,0 +1,28 @@
+{
+ "runs": [
+  {
+   "group": "C",
+   "questionId": "A-RET-002",
+   "model": "cc-switch-zhipu-glm/glm-5.3-flash",
+   "mcpCallCount": 3,
+   "toolCalls": {
+    "egret_exml_list_exml_files": 1,
+    "egret_exml_get_exml_scene": 2
+   },
+   "tokens": {
+    "input": 26767,
+    "output": 7490,
+    "total": 224401,
+    "lastTurn": {
+     "input": 4674,
+     "output": 1832,
+     "total": 34538
+    }
+   },
+   "assistantMs": 192554,
+   "wallClockSec": 247
+  }
+ ],
+ "completeQuestionCount": 0,
+ "generatedNote": "P4-A2 runner extract：来自各题 session.jsonl 的工具调用/usage/耗时记录"
+}
