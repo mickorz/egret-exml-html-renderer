@@ -1,0 +1,98 @@
+{
+  "version": "P4-A1",
+  "note": "评分规则可程序化计算：每题按 scoringPoints 逐点给分（0/0.5/1），类内平均 -> 按权重合成 Gate 总分；严重事实错误单独判定，一票否决",
+  "gateA": {
+    "weights": {
+      "asset-retrieval": 0.15,
+      "structure": 0.25,
+      "component-tracing": 0.20,
+      "property": 0.20,
+      "comprehensive": 0.20
+    },
+    "evidenceWeights": {
+      "answer": 0.6,
+      "evidence": 0.4
+    },
+    "thresholds": {
+      "total": 0.85,
+      "structure": 0.95,
+      "component-tracing": 0.90,
+      "evidence-completeness": 0.90
+    }
+  },
+  "gateB": {
+    "weights": {
+      "single-attribute": 0.20,
+      "layout": 0.20,
+      "component": 0.20,
+      "resource": 0.20,
+      "cross-node": 0.20
+    },
+    "perQuestionDimensions": {
+      "targetLocation": 0.25,
+      "propertyCorrectness": 0.20,
+      "layoutImpact": 0.20,
+      "dependencyImpact": 0.15,
+      "verificationCompleteness": 0.20
+    },
+    "thresholds": {
+      "total": 0.85,
+      "targetLocation": 0.95
+    }
+  },
+  "severeFactualErrors": [
+    {
+      "code": "SEVERE-WRONG-FILE",
+      "desc": "修改方案指向错误源文件（如把 item 内容修改写进 HometownRebateView.exml 而非 HometownRebateItemRender.exml）",
+      "detection": "target.file 与 ground-truth target.file 不符"
+    },
+    {
+      "code": "SEVERE-SIMULATED-AS-REAL",
+      "desc": "把模拟节点（List item / bitmapnumber 示例）当作真实声明节点提出修改",
+      "detection": "方案要求逐个修改模拟实例或声称模拟节点是当前文件声明"
+    },
+    {
+      "code": "SEVERE-BOUNDS-AS-DECLARATION",
+      "desc": "把计算 bounds 当作原始 EXML 属性提出修改（如改 bounds.x=1041）",
+      "detection": "changes 的 before/after 取自 bounds 而非 native.attributes"
+    },
+    {
+      "code": "SEVERE-DUPLICATE-ID-BINDING",
+      "desc": "把重复 nodeId 的诊断错误地唯一绑定到某个节点",
+      "detection": "A-CMP-003 答案声称可唯一绑定"
+    },
+    {
+      "code": "SEVERE-FABRICATED-DATA",
+      "desc": "编造不存在的节点/属性/文件/资源（evidence 无工具来源或与工具数据矛盾）",
+      "detection": "evidence 与 ground-truth/工具重采不符且 unknowns 未声明"
+    }
+  ],
+  "severeErrorPolicy": "任一题出现任一严重事实错误 => 该题 0 分；同一错误跨题重复 => 记录次数；严重错误总数 > 0 时无论总分多少，判定「不可进入自动修改阶段」",
+  "evidenceCompleteness": {
+    "rule": "每条关键论断须有 evidence（file/stableKey/instancePath/field/value 五要素来自工具返回）；缺 evidence 的论断按半分计，编造 evidence 按严重错误计",
+    "unknownsPolicy": "诚实声明 unknowns 不扣分；用编造数据掩盖未知按 SEVERE-FABRICATED-DATA 计"
+  },
+  "efficiencyMetrics": {
+    "independent": true,
+    "note": "独立记录，不计入 Gate A/B 权重（P4-A1 评审决定）",
+    "metrics": ["mcpCallCount", "totalTokens", "wallClockSeconds", "duplicateQueryCount", "invalidCallCount", "accuracy"],
+    "comparisonGoals": [
+      "B vs A：结构化数据是否减少无效推理（无效调用/编造率）",
+      "C vs B：资产索引是否减少跨文件搜索成本（调用数/Token/耗时）"
+    ]
+  },
+  "controlledExperiment": {
+    "groups": {
+      "A": "基线组：实验框架直接注入题目涉及文件的 EXML 原文（非 MCP-only，P4-A1 评审决定不为实验增加产品接口）",
+      "B": "MCP-only：get_exml_scene / get_node_detail / preview_exml",
+      "C": "MCP-only：B + search_ui_assets / find_component_usages / get_component_graph / diff_exml_scenes / list_exml_files"
+    },
+    "controls": ["同模型", "同题目", "同输出契约", "独立新会话", "相同上下文预算"],
+    "isolation": "被测 Agent 仅可访问指定组的数据通道；ground-truth 目录（本仓库 dev-docs）不在 MCP 数据面（McpContext.rootDir 指向 Egret 工程），且被测会话不提供仓库文件读取"
+  },
+  "automation": {
+    "collect": "EGRET_PROJECT_ROOT=<工程根> npx tsx selftest/p4a1-bench.ts collect",
+    "validate": "EGRET_PROJECT_ROOT=<工程根> npx tsx selftest/p4a1-bench.ts validate",
+    "validateChecks": ["30 题唯一 id", "Gate A 5 类 x4 / Gate B 5 类 x2", "七类陷阱全覆盖", "每题五字段完整", "ground-truth 与工具重采逐题一致"]
+  }
+}

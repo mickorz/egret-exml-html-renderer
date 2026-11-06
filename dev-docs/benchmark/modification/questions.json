@@ -1,0 +1,95 @@
+{
+  "gate": "B",
+  "gateName": "Modification Planning",
+  "scene": "被测对象均为真实工程 GDMahjongMobile（EGRET_PROJECT_ROOT），主场景文件 skins/homeTown/HometownRebateView.exml；本 Gate 只做方案不做修改",
+  "outputContract": {
+    "target": "{file, stableKey, instancePath}——修改声明的归属文件（注意展开内容归属源皮肤文件）",
+    "changes": "数组，每项 {property, before, after, reason}——before/after 必须是原始 EXML 声明语义（native.attributes），不是计算 bounds",
+    "dependencies": "受影响的节点/文件/Skin 复用（含模拟 item 数量、引用文件数）",
+    "risks": "布局错位/资源缺失/复用影响等风险点",
+    "verification": "修改后的验证方案（Scene Diff / 渲染对比 / Inspector 复查）",
+    "requiresHumanApproval": "是否需要人工确认（boolean）及原因"
+  },
+  "questions": [
+    {
+      "questionId": "B-ATT-001",
+      "category": "single-attribute",
+      "objective": "单属性文本修改方案",
+      "question": "把 _labTime 的文本改成「活动时间：11月11日-12月30日」。给出目标节点（file/stableKey/instancePath）、修改属性（before/after）、影响范围与验证方案。",
+      "trapTypes": [],
+      "scoringPoints": ["目标定位正确", "text 属性 before/after", "验证方案含 Diff/渲染复查"]
+    },
+    {
+      "questionId": "B-ATT-002",
+      "category": "single-attribute",
+      "objective": "单属性尺寸修改方案（声明值来源）",
+      "question": "把 _btnClose 的尺寸从 40×40 改成 50×50。给出要修改的属性（当前声明值是多少、改成多少）、EmptyBtn 组件性质对方案的影响、风险。",
+      "trapTypes": [],
+      "scoringPoints": ["width/height before=40/after=50", "说明 EmptyBtn 为代码组件（改的是实例声明不影响其他 467 处）", "尺寸变化对内部内容的缩放风险提示"]
+    },
+    {
+      "questionId": "B-LAY-001",
+      "category": "layout",
+      "objective": "位移修改：约束 vs 计算 bounds（核心负向测试）",
+      "question": "把关闭按钮向右移动 20px。它的当前计算 bounds.x 是 1041——可以直接把 x 改成 1061 吗？给出正确的修改方案（属性/原始声明值 before/after）。",
+      "trapTypes": ["computed-bounds"],
+      "scoringPoints": ["明确否定改 bounds.x（计算结果不可改）", "正确定位约束声明 horizontalCenter=541", "方案：horizontalCenter 541→561（或说明 vc 不变）", "解释约束语义"]
+    },
+    {
+      "questionId": "B-LAY-002",
+      "category": "layout",
+      "objective": "尺寸修改：无显式 width 声明的自然尺寸节点",
+      "question": "把 _imgCost 的显示宽度从 183 增加到 203（高度不变）。它原始声明里有没有 width？当前宽度从哪来？给出修改方案。",
+      "trapTypes": ["computed-bounds"],
+      "scoringPoints": ["确认原始声明无 width（自然尺寸来自图片资源）", "方案：添加 width=\"203\" 声明", "提示 scale9Grid（153,18,6,9）九宫格拉伸语义", "禁止直接引用 bounds 修改"]
+    },
+    {
+      "questionId": "B-CMP-001",
+      "category": "component",
+      "objective": "代码组件皮肤替换分析（影响范围推理）",
+      "question": "想把 _btnClose 换成另一套按钮皮肤（例如工程里已有的绿色确认按钮皮肤）。分析：EmptyBtn 是什么性质组件、全工程有多少处使用、直接换皮肤文件可行吗？给出可行的修改方案（至少一种）及影响范围。",
+      "trapTypes": ["component-usage-tool-misuse"],
+      "scoringPoints": ["EmptyBtn=代码组件（无皮肤 EXML）", "引用规模正确（467 处，不可全局换）", "可行方案：实例加 skinName 指派皮肤 / 换单点组件标签", "影响范围限定单实例"]
+    },
+    {
+      "questionId": "B-CMP-002",
+      "category": "component",
+      "objective": "List itemRenderer 皮肤替换（跨文件组件）",
+      "question": "把页面 List 的 itemRenderer 从 HometownRebateItemRenderSkin 换成 GameDisbandVoteUserItemSkin。给出：要修改的属性在哪个文件哪个节点、修改后页面会有什么变化、有什么风险（item 尺寸/布局）。",
+      "trapTypes": ["cross-file-component"],
+      "scoringPoints": ["定位 _listAccrue 的 itemRendererSkinName 属性", "修改点在 HometownRebateView.exml（不在皮肤文件）", "影响 3 个模拟 item 全部换肤", "风险：新 Skin item 尺寸与 List 布局（262×480 容器）适配"]
+    },
+    {
+      "questionId": "B-RES-001",
+      "category": "resource",
+      "objective": "图片资源替换（scale9Grid 适配）",
+      "question": "把 _imgCost 的图片资源换成工程里另一张资源。当前资源的 scale9Grid=153,18,6,9、显示 183×56。给出：source 属性修改方案、候选资源的检索方式、替换后需要注意什么。",
+      "trapTypes": [],
+      "scoringPoints": ["source 属性 before（htSub_json.ImgShuliang_png）/after（候选）", "检索方式（search_ui_assets / 资源列表）", "注意 scale9Grid 对新图未必适配 + 新图需可被资源索引解析"]
+    },
+    {
+      "questionId": "B-RES-002",
+      "category": "resource",
+      "objective": "数字字体资源替换（多节点共用）",
+      "question": "页面三个数字展示（_labTotal/_labCost/_labJiazeng）当前共用 ArtNumberSkin 字体前缀。想整体换成另一套数字字体（工程里搜索候选）。给出：修改哪些节点的什么属性、候选如何检索、影响范围。",
+      "trapTypes": [],
+      "scoringPoints": ["fontName 属性（3 处节点）", "候选检索（asset index / 文件模糊）", "影响三个节点全部生效 + 模拟渲染验证"]
+    },
+    {
+      "questionId": "B-XNODE-001",
+      "category": "cross-node",
+      "objective": "模拟实例 vs 源声明区分（核心负向测试：合成包装+模拟 item+跨文件）",
+      "question": "把 List item 里的分隔线图片 _imgLine1 高度从 11 改成 13。页面里它出现了 3 次——要改 3 处吗？给出正确修改方案（目标文件/节点/属性/before/after）和影响范围（该皮肤被几个文件引用、页面内几个 item 生效）。",
+      "trapTypes": ["simulated-item", "synthetic-wrapper", "cross-file-component"],
+      "scoringPoints": ["明确否定改 3 个模拟实例（同源展开）", "目标=HometownRebateItemRender.exml 的 _imgLine1 声明", "height before=11/after=13", "影响：该 Skin 被引用 1 处文件、页面 3 个 item 全部生效"]
+    },
+    {
+      "questionId": "B-XNODE-002",
+      "category": "cross-node",
+      "objective": "容器整体位移的父子联动分析",
+      "question": "把奖励列表滚动区域整体向下移动 20px。给出：目标节点（_scrollSign）的定位声明 before/after、内部节点（_grpAccrueList/_listAccrue/item）会不会跟着动（为什么）、验证方案。",
+      "trapTypes": [],
+      "scoringPoints": ["verticalCenter 10→30（约束语义）", "解释父子相对坐标（内部全部跟随）", "验证含 Scene Diff + 渲染对比"]
+    }
+  ]
+}

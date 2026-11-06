@@ -1,0 +1,1136 @@
+{
+ "generatedNote": "标准答案由 selftest/p4a1-bench.ts collect 用 MCP 工具从真实工程采集，供人工核对；被测 Agent 不可访问",
+ "answers": {
+  "A-RET-001": {
+   "expected": {
+    "files": [
+     {
+      "file": "skins/homeTown/HometownRebateItemRender.exml",
+      "className": "HometownRebateItemRenderSkin"
+     },
+     {
+      "file": "skins/homeTown/HometownRebateView.exml",
+      "className": "HometownRebateViewSkin"
+     }
+    ]
+   },
+   "evidence": [
+    {
+     "tool": "search_ui_assets",
+     "field": "entries[].basic",
+     "value": "file+rootClass",
+     "file": "skins/homeTown/HometownRebateView.exml"
+    }
+   ]
+  },
+  "A-RET-002": {
+   "expected": {
+    "className": "HometownRebateViewSkin",
+    "rootKey": "HometownRebateView#0",
+    "stage": {
+     "width": 1280,
+     "height": 720
+    }
+   },
+   "evidence": [
+    {
+     "tool": "get_exml_scene",
+     "field": "className/rootKey/stage",
+     "value": {
+      "className": "HometownRebateViewSkin",
+      "rootKey": "HometownRebateView#0",
+      "stage": {
+       "width": 1280,
+       "height": 720
+      }
+     },
+     "file": "skins/homeTown/HometownRebateView.exml"
+    }
+   ]
+  },
+  "A-RET-003": {
+   "expected": {
+    "count": 467,
+    "samples": [
+     {
+      "file": "eui_skins/PokerUIBtn.exml",
+      "kind": "tag"
+     },
+     {
+      "file": "skins/activationGift/ActivationGiftSkin.exml",
+      "kind": "tag"
+     }
+    ]
+   },
+   "evidence": [
+    {
+     "tool": "find_component_usages",
+     "field": "usages",
+     "value": {
+      "count": 467
+     },
+     "file": "skins/homeTown/HometownRebateView.exml"
+    }
+   ]
+  },
+  "A-RET-004": {
+   "expected": {
+    "assets": [
+     {
+      "ref": "resource/assets/sheet_assets/commonui.png",
+      "kind": "frame",
+      "nodeId": null
+     },
+     {
+      "ref": "resource/assets/sheet_assets/buyaosuo.png",
+      "kind": "frame",
+      "nodeId": null
+     },
+     {
+      "ref": "resource/assets/module/friendRoom/friendRoom_sheet.png",
+      "kind": "frame",
+      "nodeId": "imgTitle"
+     },
+     {
+      "ref": "resource/assets/module/result/result_sheet.png",
+      "kind": "frame",
+      "nodeId": null
+     }
+    ],
+    "totalCount": 4
+   },
+   "evidence": [
+    {
+     "tool": "get_exml_scene",
+     "field": "nodes[].asset",
+     "value": {
+      "total": 4
+     },
+     "file": "skins/GameDisbandVoteSkin.exml"
+    }
+   ]
+  },
+  "A-STR-001": {
+   "expected": {
+    "children": [
+     {
+      "type": "rect",
+      "id": "bkg"
+     },
+     {
+      "type": "group",
+      "id": null
+     }
+    ]
+   },
+   "evidence": [
+    {
+     "tool": "get_exml_scene",
+     "field": "nodes[]",
+     "value": [
+      {
+       "type": "rect",
+       "id": "bkg"
+      },
+      {
+       "type": "group",
+       "id": null
+      }
+     ],
+     "file": "skins/homeTown/HometownRebateView.exml"
+    }
+   ]
+  },
+  "A-STR-002": {
+   "expected": {
+    "instancePath": "HometownRebateViewSkin.group._btnClose",
+    "parent": {
+     "key": "HometownRebateView#0.1",
+     "id": null,
+     "type": "group"
+    },
+    "sibling": "HometownRebateViewSkin.group._labTime",
+    "relation": "兄弟（同父 group）"
+   },
+   "evidence": [
+    {
+     "tool": "get_node_detail",
+     "field": "path",
+     "value": "HometownRebateViewSkin.group._btnClose",
+     "file": "skins/homeTown/HometownRebateView.exml",
+     "stableKey": "HometownRebateView#0.1.3",
+     "instancePath": "HometownRebateViewSkin.group._btnClose"
+    }
+   ]
+  },
+  "A-STR-003": {
+   "expected": {
+    "instancePath": "HometownRebateViewSkin.group._scrollSign._grpAccrueList._listAccrue",
+    "itemCount": 3,
+    "itemFirstLayer": [
+     {
+      "type": "group",
+      "id": "_grpNormal"
+     }
+    ]
+   },
+   "evidence": [
+    {
+     "tool": "get_exml_scene",
+     "field": "path/children",
+     "value": "HometownRebateViewSkin.group._scrollSign._grpAccrueList._listAccrue",
+     "file": "skins/homeTown/HometownRebateView.exml",
+     "stableKey": "HometownRebateView#0.1.9.0.0",
+     "instancePath": "HometownRebateViewSkin.group._scrollSign._grpAccrueList._listAccrue"
+    }
+   ]
+  },
+  "A-STR-004": {
+   "expected": {
+    "count": 3,
+    "stableKeys": [
+     "HometownRebateItemRender#0.1.9.0.0.i0.0.2.1",
+     "HometownRebateItemRender#0.1.9.0.0.i1.0.2.1",
+     "HometownRebateItemRender#0.1.9.0.0.i2.0.2.1"
+    ],
+    "keyPrefix": "HometownRebateItemRender#",
+    "reason": "List itemRendererSkinName 静态模拟展开（STATIC_ITEM_COUNT=3）",
+    "declaredIn": "不是 HometownRebateView.exml 直接声明，来自 HometownRebateItemRender.exml",
+    "srcFile": "resource/skins/homeTown/HometownRebateItemRender.exml"
+   },
+   "evidence": [
+    {
+     "tool": "get_exml_scene",
+     "field": "key/srcFile/simulated",
+     "value": {
+      "key": "HometownRebateItemRender#0.1.9.0.0.i0.0.2.1",
+      "srcFile": "resource/skins/homeTown/HometownRebateItemRender.exml"
+     },
+     "file": "skins/homeTown/HometownRebateView.exml",
+     "stableKey": "HometownRebateItemRender#0.1.9.0.0.i0.0.2.1",
+     "instancePath": "HometownRebateViewSkin.group._scrollSign._grpAccrueList._listAccrue.item0._grpNormal._grpLine1._imgLine1"
+    },
+    {
+     "tool": "get_exml_scene",
+     "field": "key/srcFile/simulated",
+     "value": {
+      "key": "HometownRebateItemRender#0.1.9.0.0.i1.0.2.1",
+      "srcFile": "resource/skins/homeTown/HometownRebateItemRender.exml"
+     },
+     "file": "skins/homeTown/HometownRebateView.exml",
+     "stableKey": "HometownRebateItemRender#0.1.9.0.0.i1.0.2.1",
+     "instancePath": "HometownRebateViewSkin.group._scrollSign._grpAccrueList._listAccrue.item1._grpNormal._grpLine1._imgLine1"
+    },
+    {
+     "tool": "get_exml_scene",
+     "field": "key/srcFile/simulated",
+     "value": {
+      "key": "HometownRebateItemRender#0.1.9.0.0.i2.0.2.1",
+      "srcFile": "resource/skins/homeTown/HometownRebateItemRender.exml"
+     },
+     "file": "skins/homeTown/HometownRebateView.exml",
+     "stableKey": "HometownRebateItemRender#0.1.9.0.0.i2.0.2.1",
+     "instancePath": "HometownRebateViewSkin.group._scrollSign._grpAccrueList._listAccrue.item2._grpNormal._grpLine1._imgLine1"
+    }
+   ]
+  },
+  "A-TRC-001": {
+   "expected": {
+    "component": {
+     "identity": "EmptyBtn",
+     "kind": "container"
+    },
+    "declaredIn": "HometownRebateView.exml（代码组件，无独立皮肤 EXML）",
+    "resolveSkinFile": "EmptyBtn 不在皮肤类名索引中（代码组件）"
+   },
+   "evidence": [
+    {
+     "tool": "get_node_detail",
+     "field": "component",
+     "value": {
+      "identity": "EmptyBtn",
+      "kind": "container"
+     },
+     "file": "skins/homeTown/HometownRebateView.exml",
+     "stableKey": "HometownRebateView#0.1.3",
+     "instancePath": "HometownRebateViewSkin.group._btnClose"
+    }
+   ]
+  },
+  "A-TRC-002": {
+   "expected": {
+    "srcFile": "resource/skins/homeTown/HometownRebateItemRender.exml",
+    "skinClass": "HometownRebateItemRenderSkin",
+    "itemRendererSkinName": "HometownRebateItemRenderSkin"
+   },
+   "evidence": [
+    {
+     "tool": "get_exml_scene",
+     "field": "children[0].component/srcFile",
+     "value": {
+      "srcFile": "resource/skins/homeTown/HometownRebateItemRender.exml",
+      "skinClass": "HometownRebateItemRenderSkin"
+     },
+     "file": "skins/homeTown/HometownRebateView.exml",
+     "stableKey": "HometownRebateView#0.1.9.0.0.i0",
+     "instancePath": "HometownRebateViewSkin.group._scrollSign._grpAccrueList._listAccrue.item0"
+    }
+   ]
+  },
+  "A-TRC-003": {
+   "expected": {
+    "keyPrefixReason": "展开内容 stableKey 前缀 = 源皮肤文件 basename（HometownRebateItemRender）",
+    "srcFile": "resource/skins/homeTown/HometownRebateItemRender.exml",
+    "findDeclarationIn": "resource/skins/homeTown/HometownRebateItemRender.exml"
+   },
+   "evidence": [
+    {
+     "tool": "get_node_detail",
+     "field": "key/srcFile",
+     "value": {
+      "keyPrefix": "HometownRebateItemRender",
+      "srcFile": "resource/skins/homeTown/HometownRebateItemRender.exml"
+     },
+     "file": "skins/homeTown/HometownRebateView.exml",
+     "stableKey": "HometownRebateItemRender#0.1.9.0.0.i0.0.2.1",
+     "instancePath": "HometownRebateViewSkin.group._scrollSign._grpAccrueList._listAccrue.item0._grpNormal._grpLine1._imgLine1"
+    }
+   ]
+  },
+  "A-TRC-004": {
+   "expected": {
+    "nodes": [
+     {
+      "id": "_labTotal",
+      "identity": "ArtNumberEUI",
+      "kind": "bitmap-number",
+      "simulated": true
+     },
+     {
+      "id": "_labCost",
+      "identity": "ArtNumberEUI",
+      "kind": "bitmap-number",
+      "simulated": true
+     },
+     {
+      "id": "_labJiazeng",
+      "identity": "ArtNumberEUI",
+      "kind": "bitmap-number",
+      "simulated": true
+     }
+    ],
+    "verdict": "模拟节点（simulated=true，ArtNumberEUI 代码组件按示例值模拟）"
+   },
+   "evidence": [
+    {
+     "tool": "get_node_detail",
+     "field": "simulated/component",
+     "value": {
+      "simulated": true
+     },
+     "file": "skins/homeTown/HometownRebateView.exml",
+     "stableKey": "HometownRebateView#0.1.8",
+     "instancePath": "HometownRebateViewSkin.group._labTotal"
+    },
+    {
+     "tool": "get_node_detail",
+     "field": "simulated/component",
+     "value": {
+      "simulated": true
+     },
+     "file": "skins/homeTown/HometownRebateView.exml",
+     "stableKey": "HometownRebateView#0.1.11",
+     "instancePath": "HometownRebateViewSkin.group._labCost"
+    },
+    {
+     "tool": "get_node_detail",
+     "field": "simulated/component",
+     "value": {
+      "simulated": true
+     },
+     "file": "skins/homeTown/HometownRebateView.exml",
+     "stableKey": "HometownRebateView#0.1.14",
+     "instancePath": "HometownRebateViewSkin.group._labJiazeng"
+    }
+   ]
+  },
+  "A-PRP-001": {
+   "expected": {
+    "declared": {
+     "x": "63",
+     "y": "120",
+     "horizontalCenter": "-335",
+     "verticalCenter": "87"
+    },
+    "bounds": {
+     "x": 93.5,
+     "y": 369,
+     "width": 183,
+     "height": 56
+    },
+    "reason": "同时声明显式坐标与约束（hc=-335/vc=87），EUI 约束优先，计算 bounds 覆盖显式 x/y",
+    "modify": "改原始声明（约束或 x/y），不是 bounds"
+   },
+   "evidence": [
+    {
+     "tool": "get_node_detail",
+     "field": "native.attributes/bounds",
+     "value": {
+      "declared": {
+       "id": "_imgCost",
+       "visible": "true",
+       "horizontalCenter": "-335",
+       "verticalCenter": "87",
+       "scale9Grid": "153,18,6,9",
+       "x": "63",
+       "y": "120",
+       "source": "htSub_json.ImgShuliang_png"
+      },
+      "bounds": {
+       "x": 93.5,
+       "y": 369,
+       "width": 183,
+       "height": 56
+      }
+     },
+     "file": "skins/homeTown/HometownRebateView.exml",
+     "stableKey": "HometownRebateView#0.1.10",
+     "instancePath": "HometownRebateViewSkin.group._imgCost"
+    }
+   ]
+  },
+  "A-PRP-002": {
+   "expected": {
+    "noXYDeclaration": true,
+    "constraints": {
+     "horizontalCenter": "541",
+     "verticalCenter": "-240"
+    },
+    "bounds": {
+     "x": 1041,
+     "y": 50
+    }
+   },
+   "evidence": [
+    {
+     "tool": "get_node_detail",
+     "field": "native.attributes/bounds",
+     "value": {
+      "declared": {
+       "id": "_btnClose",
+       "width": "40",
+       "height": "40",
+       "horizontalCenter": "541",
+       "verticalCenter": "-240"
+      },
+      "bounds": {
+       "x": 1041,
+       "y": 50,
+       "width": 40,
+       "height": 40
+      }
+     },
+     "file": "skins/homeTown/HometownRebateView.exml",
+     "stableKey": "HometownRebateView#0.1.3",
+     "instancePath": "HometownRebateViewSkin.group._btnClose"
+    }
+   ]
+  },
+  "A-PRP-003": {
+   "expected": {
+    "fontFamily": "Microsoft YaHei",
+    "size": "20",
+    "textColor": "0xFFEBB2",
+    "position": {
+     "horizontalCenter": "332",
+     "verticalCenter": "-233"
+    }
+   },
+   "evidence": [
+    {
+     "tool": "get_node_detail",
+     "field": "native.attributes",
+     "value": {
+      "id": "_labTime",
+      "text": "11月11日-12月30日",
+      "size": "20",
+      "textColor": "0xFFEBB2",
+      "horizontalCenter": "332",
+      "verticalCenter": "-233",
+      "textAlign": "left",
+      "fontFamily": "Microsoft YaHei",
+      "visible": "true"
+     },
+     "file": "skins/homeTown/HometownRebateView.exml",
+     "stableKey": "HometownRebateView#0.1.4",
+     "instancePath": "HometownRebateViewSkin.group._labTime"
+    }
+   ]
+  },
+  "A-PRP-004": {
+   "expected": {
+    "scale9Grid": "153,18,6,9",
+    "asset": {
+     "kind": "frame",
+     "file": "resource/assets/module/homeTown/htSub.png",
+     "frame": {
+      "x": 1230,
+      "y": 962,
+      "w": 183,
+      "h": 56,
+      "offX": 0,
+      "offY": 0,
+      "sourceW": 183,
+      "sourceH": 56
+     }
+    },
+    "bounds": {
+     "width": 183,
+     "height": 56
+    }
+   },
+   "evidence": [
+    {
+     "tool": "get_node_detail",
+     "field": "native.attributes/asset",
+     "value": {
+      "scale9Grid": "153,18,6,9",
+      "asset": {
+       "kind": "frame",
+       "file": "resource/assets/module/homeTown/htSub.png",
+       "frame": {
+        "x": 1230,
+        "y": 962,
+        "w": 183,
+        "h": 56,
+        "offX": 0,
+        "offY": 0,
+        "sourceW": 183,
+        "sourceH": 56
+       }
+      }
+     },
+     "file": "skins/homeTown/HometownRebateView.exml",
+     "stableKey": "HometownRebateView#0.1.10",
+     "instancePath": "HometownRebateViewSkin.group._imgCost"
+    }
+   ]
+  },
+  "A-CMP-001": {
+   "expected": {
+    "chain": [
+     {
+      "type": "group",
+      "id": null,
+      "fromSkinFile": false
+     },
+     {
+      "type": "scroller",
+      "id": "_scrollSign",
+      "fromSkinFile": false
+     },
+     {
+      "type": "group",
+      "id": "_grpAccrueList",
+      "fromSkinFile": false
+     },
+     {
+      "type": "list",
+      "id": "_listAccrue",
+      "fromSkinFile": false
+     },
+     {
+      "type": "container",
+      "id": null,
+      "fromSkinFile": false
+     },
+     {
+      "type": "group",
+      "id": "_grpNormal",
+      "fromSkinFile": false
+     },
+     {
+      "type": "group",
+      "id": "_grpLine1",
+      "fromSkinFile": true
+     },
+     {
+      "type": "image",
+      "id": "_imgLine1",
+      "fromSkinFile": true
+     }
+    ],
+    "boundary": "item 包装层（index 6）及之后来自 HometownRebateItemRender.exml；之前为 HometownRebateView.exml 声明"
+   },
+   "evidence": [
+    {
+     "tool": "get_exml_scene",
+     "field": "chain node",
+     "value": {
+      "id": null,
+      "type": "group"
+     },
+     "file": "skins/homeTown/HometownRebateView.exml",
+     "stableKey": "HometownRebateView#0.1"
+    },
+    {
+     "tool": "get_exml_scene",
+     "field": "chain node",
+     "value": {
+      "id": "_scrollSign",
+      "type": "scroller"
+     },
+     "file": "skins/homeTown/HometownRebateView.exml",
+     "stableKey": "HometownRebateView#0.1.9"
+    },
+    {
+     "tool": "get_exml_scene",
+     "field": "chain node",
+     "value": {
+      "id": "_grpAccrueList",
+      "type": "group"
+     },
+     "file": "skins/homeTown/HometownRebateView.exml",
+     "stableKey": "HometownRebateView#0.1.9.0"
+    },
+    {
+     "tool": "get_exml_scene",
+     "field": "chain node",
+     "value": {
+      "id": "_listAccrue",
+      "type": "list"
+     },
+     "file": "skins/homeTown/HometownRebateView.exml",
+     "stableKey": "HometownRebateView#0.1.9.0.0"
+    },
+    {
+     "tool": "get_exml_scene",
+     "field": "chain node",
+     "value": {
+      "id": null,
+      "type": "container"
+     },
+     "file": "skins/homeTown/HometownRebateView.exml",
+     "stableKey": "HometownRebateView#0.1.9.0.0.i0"
+    },
+    {
+     "tool": "get_exml_scene",
+     "field": "chain node",
+     "value": {
+      "id": "_grpNormal",
+      "type": "group"
+     },
+     "file": "skins/homeTown/HometownRebateView.exml",
+     "stableKey": "HometownRebateItemRender#0.1.9.0.0.i0.0"
+    },
+    {
+     "tool": "get_exml_scene",
+     "field": "chain node",
+     "value": {
+      "id": "_grpLine1",
+      "type": "group"
+     },
+     "file": "skins/homeTown/HometownRebateView.exml",
+     "stableKey": "HometownRebateItemRender#0.1.9.0.0.i0.0.2"
+    },
+    {
+     "tool": "get_exml_scene",
+     "field": "chain node",
+     "value": {
+      "id": "_imgLine1",
+      "type": "image"
+     },
+     "file": "skins/homeTown/HometownRebateView.exml",
+     "stableKey": "HometownRebateItemRender#0.1.9.0.0.i0.0.2.1"
+    }
+   ]
+  },
+  "A-CMP-002": {
+   "expected": {
+    "nodes": [
+     {
+      "id": "_labTotal",
+      "fontName": "ArtNumberSkin"
+     },
+     {
+      "id": "_labCost",
+      "fontName": "ArtNumberSkin"
+     },
+     {
+      "id": "_labJiazeng",
+      "fontName": "ArtNumberSkin"
+     }
+    ],
+    "semantics": "总数（_labTotal）/ 消耗（_labCost）/ 加赠（_labJiazeng）",
+    "fontName": "ArtNumberSkin",
+    "resourceExists": true,
+    "resourceFile": "skins/ArtNumber.exml"
+   },
+   "evidence": [
+    {
+     "tool": "search_ui_assets",
+     "field": "class=ArtNumberSkin",
+     "value": {
+      "count": 1,
+      "file": "skins/ArtNumber.exml"
+     },
+     "file": "skins/homeTown/HometownRebateView.exml"
+    }
+   ]
+  },
+  "A-CMP-003": {
+   "expected": {
+    "canBind": false,
+    "occurrences": 3,
+    "locations": [
+     "HometownRebateViewSkin.group._scrollSign._grpAccrueList._listAccrue.item0._grpNormal._aniPanel",
+     "HometownRebateViewSkin.group._scrollSign._grpAccrueList._listAccrue.item1._grpNormal._aniPanel",
+     "HometownRebateViewSkin.group._scrollSign._grpAccrueList._listAccrue.item2._grpNormal._aniPanel"
+    ],
+    "reason": "_aniPanel 在 3 个模拟 item 内重复出现（文档级 nodeId 不唯一），诊断不可唯一绑定；Inspector 不绑定该诊断并显示原因",
+    "diagnostic": {
+     "level": "warning",
+     "code": "SCENE_ANIMATION_PLACEHOLDER",
+     "message": "动画组件按占位渲染: ns1:DragonBonesAni（fileName=Xiaohaodazengsong_03）",
+     "nodeId": "_aniPanel"
+    }
+   },
+   "evidence": [
+    {
+     "tool": "get_exml_scene",
+     "field": "id/path",
+     "value": {
+      "id": "_aniPanel",
+      "path": "HometownRebateViewSkin.group._scrollSign._grpAccrueList._listAccrue.item0._grpNormal._aniPanel"
+     },
+     "file": "skins/homeTown/HometownRebateView.exml",
+     "stableKey": "HometownRebateItemRender#0.1.9.0.0.i0.0.1",
+     "instancePath": "HometownRebateViewSkin.group._scrollSign._grpAccrueList._listAccrue.item0._grpNormal._aniPanel"
+    },
+    {
+     "tool": "get_exml_scene",
+     "field": "id/path",
+     "value": {
+      "id": "_aniPanel",
+      "path": "HometownRebateViewSkin.group._scrollSign._grpAccrueList._listAccrue.item1._grpNormal._aniPanel"
+     },
+     "file": "skins/homeTown/HometownRebateView.exml",
+     "stableKey": "HometownRebateItemRender#0.1.9.0.0.i1.0.1",
+     "instancePath": "HometownRebateViewSkin.group._scrollSign._grpAccrueList._listAccrue.item1._grpNormal._aniPanel"
+    },
+    {
+     "tool": "get_exml_scene",
+     "field": "id/path",
+     "value": {
+      "id": "_aniPanel",
+      "path": "HometownRebateViewSkin.group._scrollSign._grpAccrueList._listAccrue.item2._grpNormal._aniPanel"
+     },
+     "file": "skins/homeTown/HometownRebateView.exml",
+     "stableKey": "HometownRebateItemRender#0.1.9.0.0.i2.0.1",
+     "instancePath": "HometownRebateViewSkin.group._scrollSign._grpAccrueList._listAccrue.item2._grpNormal._aniPanel"
+    }
+   ]
+  },
+  "A-CMP-004": {
+   "expected": {
+    "why": "search_ui_assets 的 class 参数是根类精确匹配（rootClass === 值），HometownRebate 不是完整类名",
+    "classFuzzyResult": 0,
+    "classExactResult": 1,
+    "correctWays": [
+     {
+      "way": "file 模糊匹配",
+      "result": 2
+     },
+     {
+      "way": "find_component_usages 反查",
+      "result": 0
+     }
+    ]
+   },
+   "evidence": [
+    {
+     "tool": "search_ui_assets",
+     "field": "class=HometownRebate",
+     "value": {
+      "count": 0
+     },
+     "file": "skins/homeTown/HometownRebateView.exml"
+    },
+    {
+     "tool": "search_ui_assets",
+     "field": "file=HometownRebate",
+     "value": {
+      "count": 2
+     },
+     "file": "skins/homeTown/HometownRebateView.exml"
+    },
+    {
+     "tool": "find_component_usages",
+     "field": "class=HometownRebateViewSkin",
+     "value": {
+      "count": 0
+     },
+     "file": "skins/homeTown/HometownRebateView.exml"
+    }
+   ]
+  },
+  "B-ATT-001": {
+   "target": {
+    "file": "skins/homeTown/HometownRebateView.exml",
+    "stableKey": "HometownRebateView#0.1.4",
+    "instancePath": "HometownRebateViewSkin.group._labTime"
+   },
+   "expected": {
+    "property": "text",
+    "before": "11月11日-12月30日",
+    "after": "活动时间：11月11日-12月30日"
+   },
+   "evidence": [
+    {
+     "tool": "get_node_detail",
+     "field": "native.attributes.text",
+     "value": {
+      "before": "11月11日-12月30日"
+     },
+     "file": "skins/homeTown/HometownRebateView.exml",
+     "stableKey": "HometownRebateView#0.1.4",
+     "instancePath": "HometownRebateViewSkin.group._labTime"
+    }
+   ]
+  },
+  "B-ATT-002": {
+   "target": {
+    "file": "skins/homeTown/HometownRebateView.exml",
+    "stableKey": "HometownRebateView#0.1.3",
+    "instancePath": "HometownRebateViewSkin.group._btnClose"
+   },
+   "expected": {
+    "properties": {
+     "width": {
+      "before": "40",
+      "after": "50"
+     },
+     "height": {
+      "before": "40",
+      "after": "50"
+     }
+    },
+    "componentNature": "EmptyBtn 为代码组件：改实例声明只影响本节点，不影响其他引用处"
+   },
+   "evidence": [
+    {
+     "tool": "get_node_detail",
+     "field": "native.attributes.width/height",
+     "value": {
+      "width": "40",
+      "height": "40"
+     },
+     "file": "skins/homeTown/HometownRebateView.exml",
+     "stableKey": "HometownRebateView#0.1.3",
+     "instancePath": "HometownRebateViewSkin.group._btnClose"
+    }
+   ]
+  },
+  "B-LAY-001": {
+   "target": {
+    "file": "skins/homeTown/HometownRebateView.exml",
+    "stableKey": "HometownRebateView#0.1.3",
+    "instancePath": "HometownRebateViewSkin.group._btnClose"
+   },
+   "expected": {
+    "wrongWay": "bounds.x=1041 是计算结果（约束求解），EXML 中不存在该属性，不可改",
+    "rightWay": "修改 horizontalCenter 声明 541 -> 561（向右 20px；verticalCenter=-240 不变）",
+    "constraints": {
+     "horizontalCenter": "541",
+     "verticalCenter": "-240"
+    },
+    "computedBoundsX": 1041
+   },
+   "evidence": [
+    {
+     "tool": "get_node_detail",
+     "field": "native.attributes.horizontalCenter",
+     "value": {
+      "horizontalCenter": "541",
+      "boundsX": 1041
+     },
+     "file": "skins/homeTown/HometownRebateView.exml",
+     "stableKey": "HometownRebateView#0.1.3",
+     "instancePath": "HometownRebateViewSkin.group._btnClose"
+    }
+   ]
+  },
+  "B-LAY-002": {
+   "target": {
+    "file": "skins/homeTown/HometownRebateView.exml",
+    "stableKey": "HometownRebateView#0.1.10",
+    "instancePath": "HometownRebateViewSkin.group._imgCost"
+   },
+   "expected": {
+    "noWidthDeclaration": true,
+    "widthSource": "图片自然尺寸（图集帧 ImgShuliang_png 183×56）",
+    "plan": "添加 width=\"203\" 声明",
+    "scale9Grid": "153,18,6,9",
+    "note": "九宫格 153,18,6,9 下加宽按拉伸语义生效"
+   },
+   "evidence": [
+    {
+     "tool": "get_node_detail",
+     "field": "native.attributes/asset/bounds",
+     "value": {
+      "assetW": 183
+     },
+     "file": "skins/homeTown/HometownRebateView.exml",
+     "stableKey": "HometownRebateView#0.1.10",
+     "instancePath": "HometownRebateViewSkin.group._imgCost"
+    }
+   ]
+  },
+  "B-CMP-001": {
+   "target": {
+    "file": "skins/homeTown/HometownRebateView.exml",
+    "stableKey": "HometownRebateView#0.1.3",
+    "instancePath": "HometownRebateViewSkin.group._btnClose"
+   },
+   "expected": {
+    "nature": "EmptyBtn 为代码组件（component.kind=container），无独立皮肤 EXML 可换",
+    "usageCount": 467,
+    "plans": [
+     "方案 1：仅本实例加 skinName=\"<皮肤类名>\" 指派皮肤（影响单点）",
+     "方案 2：替换该实例组件标签为带皮肤的按钮组件（影响单点）"
+    ],
+    "candidates": []
+   },
+   "evidence": [
+    {
+     "tool": "find_component_usages",
+     "field": "EmptyBtn",
+     "value": {
+      "count": 467
+     },
+     "file": "skins/homeTown/HometownRebateView.exml"
+    },
+    {
+     "tool": "get_node_detail",
+     "field": "component",
+     "value": {
+      "identity": "EmptyBtn",
+      "kind": "container"
+     },
+     "file": "skins/homeTown/HometownRebateView.exml",
+     "stableKey": "HometownRebateView#0.1.3",
+     "instancePath": "HometownRebateViewSkin.group._btnClose"
+    }
+   ]
+  },
+  "B-CMP-002": {
+   "target": {
+    "file": "skins/homeTown/HometownRebateView.exml",
+    "stableKey": "HometownRebateView#0.1.9.0.0",
+    "instancePath": "HometownRebateViewSkin.group._scrollSign._grpAccrueList._listAccrue"
+   },
+   "expected": {
+    "property": "itemRendererSkinName",
+    "before": "HometownRebateItemRenderSkin",
+    "after": "GameDisbandVoteUserItemSkin",
+    "changeScope": "页面 3 个模拟 item 全部换肤（同一皮肤类展开）",
+    "newSkinExists": true,
+    "newSkinSize": {
+     "width": 97,
+     "height": 129
+    },
+    "listBounds": {
+     "width": 262,
+     "height": 480
+    },
+    "risk": "新 Skin 尺寸与 List 布局（262×480 容器 + VerticalLayout）可能不适配"
+   },
+   "evidence": [
+    {
+     "tool": "get_exml_scene",
+     "field": "native.attributes.itemRendererSkinName",
+     "value": {
+      "before": "HometownRebateItemRenderSkin"
+     },
+     "file": "skins/homeTown/HometownRebateView.exml",
+     "stableKey": "HometownRebateView#0.1.9.0.0",
+     "instancePath": "HometownRebateViewSkin.group._scrollSign._grpAccrueList._listAccrue"
+    },
+    {
+     "tool": "search_ui_assets",
+     "field": "class=GameDisbandVoteUserItemSkin",
+     "value": {
+      "count": 1,
+      "file": "skins/GameDisbandVoteUserItemSkin.exml"
+     },
+     "file": "skins/GameDisbandVoteUserItemSkin.exml"
+    }
+   ]
+  },
+  "B-RES-001": {
+   "target": {
+    "file": "skins/homeTown/HometownRebateView.exml",
+    "stableKey": "HometownRebateView#0.1.10",
+    "instancePath": "HometownRebateViewSkin.group._imgCost"
+   },
+   "expected": {
+    "property": "source",
+    "before": "htSub_json.ImgShuliang_png",
+    "after": "（候选资源名，需为资源索引可解析的引用）",
+    "scale9GridNote": "当前 scale9Grid=153,18,6,9 按原图划分，新图宽高不同则需重算或删除",
+    "assetKind": "frame"
+   },
+   "evidence": [
+    {
+     "tool": "get_node_detail",
+     "field": "native.attributes.source",
+     "value": {
+      "source": "htSub_json.ImgShuliang_png",
+      "scale9Grid": "153,18,6,9"
+     },
+     "file": "skins/homeTown/HometownRebateView.exml",
+     "stableKey": "HometownRebateView#0.1.10",
+     "instancePath": "HometownRebateViewSkin.group._imgCost"
+    }
+   ]
+  },
+  "B-RES-002": {
+   "target": [
+    {
+     "file": "skins/homeTown/HometownRebateView.exml",
+     "stableKey": "HometownRebateView#0.1.8",
+     "instancePath": "HometownRebateViewSkin.group._labTotal"
+    },
+    {
+     "file": "skins/homeTown/HometownRebateView.exml",
+     "stableKey": "HometownRebateView#0.1.11",
+     "instancePath": "HometownRebateViewSkin.group._labCost"
+    },
+    {
+     "file": "skins/homeTown/HometownRebateView.exml",
+     "stableKey": "HometownRebateView#0.1.14",
+     "instancePath": "HometownRebateViewSkin.group._labJiazeng"
+    }
+   ],
+   "expected": {
+    "property": "fontName（三个节点共用 ArtNumberSkin）",
+    "before": "ArtNumberSkin",
+    "nodes": [
+     "_labTotal",
+     "_labCost",
+     "_labJiazeng"
+    ],
+    "scope": "3 处 bitmapnumber 全部生效",
+    "candidateSearch": "search_ui_assets 按资源/文件检索候选字体皮肤（需候选类存在且资源可解析）"
+   },
+   "evidence": [
+    {
+     "tool": "get_node_detail",
+     "field": "native.attributes.fontName",
+     "value": {
+      "id": "_labTotal"
+     },
+     "file": "skins/homeTown/HometownRebateView.exml",
+     "stableKey": "HometownRebateView#0.1.8",
+     "instancePath": "HometownRebateViewSkin.group._labTotal"
+    },
+    {
+     "tool": "get_node_detail",
+     "field": "native.attributes.fontName",
+     "value": {
+      "id": "_labCost"
+     },
+     "file": "skins/homeTown/HometownRebateView.exml",
+     "stableKey": "HometownRebateView#0.1.11",
+     "instancePath": "HometownRebateViewSkin.group._labCost"
+    },
+    {
+     "tool": "get_node_detail",
+     "field": "native.attributes.fontName",
+     "value": {
+      "id": "_labJiazeng"
+     },
+     "file": "skins/homeTown/HometownRebateView.exml",
+     "stableKey": "HometownRebateView#0.1.14",
+     "instancePath": "HometownRebateViewSkin.group._labJiazeng"
+    }
+   ]
+  },
+  "B-XNODE-001": {
+   "target": {
+    "file": "resource/skins/homeTown/HometownRebateItemRender.exml",
+    "stableKey": "HometownRebateItemRender#0.1.9.0.0.i0.0.2.1",
+    "instancePath": "HometownRebateViewSkin.group._scrollSign._grpAccrueList._listAccrue.item0._grpNormal._grpLine1._imgLine1"
+   },
+   "expected": {
+    "wrongWay": "页面 3 个 _imgLine1 是同一皮肤的模拟展开实例，逐个修改错误（运行时由数据驱动）",
+    "rightWay": "修改源文件 HometownRebateItemRender.exml 中 _imgLine1 的 height 声明 11 -> 13",
+    "height": {
+     "before": "11",
+     "after": "13"
+    },
+    "usageScope": {
+     "refFiles": 1,
+     "pageItems": 3,
+     "refDetail": [
+      {
+       "file": "skins/homeTown/HometownRebateView.exml",
+       "kind": "itemRenderer"
+      }
+     ]
+    },
+    "verification": "Scene Diff（改前/改后）+ 渲染对比 3 个 item 分隔线"
+   },
+   "evidence": [
+    {
+     "tool": "get_node_detail",
+     "field": "native.attributes.height",
+     "value": {
+      "height": "11"
+     },
+     "file": "resource/skins/homeTown/HometownRebateItemRender.exml",
+     "stableKey": "HometownRebateItemRender#0.1.9.0.0.i0.0.2.1",
+     "instancePath": "HometownRebateViewSkin.group._scrollSign._grpAccrueList._listAccrue.item0._grpNormal._grpLine1._imgLine1"
+    },
+    {
+     "tool": "find_component_usages",
+     "field": "HometownRebateItemRenderSkin",
+     "value": {
+      "count": 1
+     },
+     "file": "skins/homeTown/HometownRebateView.exml"
+    }
+   ]
+  },
+  "B-XNODE-002": {
+   "target": {
+    "file": "skins/homeTown/HometownRebateView.exml",
+    "stableKey": "HometownRebateView#0.1.9",
+    "instancePath": "HometownRebateViewSkin.group._scrollSign"
+   },
+   "expected": {
+    "property": "verticalCenter",
+    "before": "10",
+    "after": "30",
+    "reason": "向右下坐标语义：垂直居中偏移 10 -> 30（下移 20px）",
+    "childrenFollow": true,
+    "subtreeNodeCount": 90,
+    "reasonChildren": "子节点坐标为组内相对坐标（父容器移动整体跟随）",
+    "verification": "Scene Diff + 渲染对比（滚动区域及内部列表整体下移）"
+   },
+   "evidence": [
+    {
+     "tool": "get_node_detail",
+     "field": "native.attributes.verticalCenter",
+     "value": {
+      "verticalCenter": "10",
+      "subtree": 90
+     },
+     "file": "skins/homeTown/HometownRebateView.exml",
+     "stableKey": "HometownRebateView#0.1.9",
+     "instancePath": "HometownRebateViewSkin.group._scrollSign"
+    }
+   ]
+  }
+ }
+}
