@@ -2,6 +2,7 @@
 
 - 日期：2026-11-05
 - 需求来源：`dev-docs/planning/P3-A-三栏式可视化工作台需求.md`（V1.0，18 条验收标准 AC-01~18）
+- 评审结论：**基本通过（8.8/10），四项修正已合并**——① Canvas 点击统一 `[data-egret-key]`（解决舞台根选择冲突）；② postMessage 增加 documentId（防过期 iframe 消息污染）；③ Inspector 区分实例属性与来源信息；④ Diagnostics 节点关联用稳定身份优先级（stableKey > instancePath > nodeId > 文档级兜底）
 - 代码基线：P2 完成后 main（`adf5f34`）
 - 执行原则：只改工作台前端（页面 + 选择器 + 新增 editor 模块），Parser/Scene Builder/Renderer/Writer/Diff/MCP 全部不动；零构建 vanilla，沿用「TS 模块导出脚本字符串、服务端拼装」的既有模式（同 `selectorScript()`）。
 
@@ -124,6 +125,7 @@ state = {
   file: string | null,            当前 EXML 相对路径
   stableKey: string | null,       当前选中节点（null = 未选中）
   source: "project" | "tree" | "canvas" | null,
+  docId: string,                  当前文档标识（每次打开文件递增，postMessage 过期消息丢弃）
   zoom: number,                   画布缩放（P3）
   document: { className, stage, nodes, rootKey, diagnostics, index } | null
 }
@@ -140,29 +142,41 @@ API: setSelection(key, source) / clearSelection(source) / openFile(file) / subsc
 iframe → 父页面（`window.parent.postMessage(msg, location.origin)`，仅当 `window.parent !== window`）：
 
 ```text
-{ type: "CANVAS_READY" }
-{ type: "NODE_SELECTED", stableKey: string }
-{ type: "NODE_DESELECTED" }
-{ type: "NODE_NOT_FOUND", stableKey: string }
+{ type: "CANVAS_READY", documentId: string }
+{ type: "NODE_SELECTED", documentId: string, stableKey: string }
+{ type: "NODE_DESELECTED", documentId: string }
+{ type: "NODE_NOT_FOUND", documentId: string, stableKey: string }
 ```
 
 父页面 → iframe（`frame.contentWindow.postMessage(msg, location.origin)`）：
 
 ```text
-{ type: "SELECT_NODE", stableKey: string }
-{ type: "DESELECT_NODE" }
+{ type: "SELECT_NODE", documentId: string, stableKey: string }
+{ type: "DESELECT_NODE", documentId: string }
 ```
 
-校验（两侧对称）：
+documentId 生成与校验（评审修正二：同 iframe 导航期间 WindowProxy 引用可能保持，e.source 校验不足以区分新旧文档）：
 
-- 父页面收消息：`e.source === frame.contentWindow && e.origin === location.origin`，且 `typeof e.data?.type === "string"`、stableKey 为 string（缺字段丢弃，不报错不崩）。
-- iframe 收消息：`e.source === window.parent && e.origin === location.origin`。
+- 父页面每次 `openFile` 生成新 docId（自增序号即可），随 SELECT_NODE/DESELECT_NODE 下发。
+- iframe 从 URL 参数 `?docid=` 读取自己的 documentId，所有上行消息携带。
+- 父页面收消息时先校验 `msg.documentId === ED.docId`，不等直接丢弃（过期文档消息）。校验链：origin → source（contentWindow）→ documentId → 字段类型。
+
+点击判定（评审修正一：统一 `[data-egret-key]`，解决舞台根节点选择冲突）：
+
+```text
+var el = e.target.closest ? e.target.closest("[data-egret-key]") : null;
+if (el) → 读 el.dataset.egretKey → 发 NODE_SELECTED
+else  → 发 NODE_DESELECTED（点在舞台外的页面空白）
+```
+
+- 覆盖：普通 `.egret-node`、`.egret-stage` 根（选中根 Skin）、`.egret-skin-wrap` 包装层（选中透明 Skin 节点本体，不再穿透到父按钮）、位图数字位片 span（closest 命中外层 bitmapnumber）。
+- Escape 键：发 NODE_DESELECTED。
+- 按 key 查元素：不直接拼接选择器（stableKey 含 `#` 等特殊字符），用 `CSS.escape(key)` 或遍历比较 `dataset.egretKey`。
 
 iframe 侧行为：
 
-- `CANVAS_READY`：脚本执行完即发送（document 已就绪，img 异步加载不阻塞）。
-- 点击 `.egret-node`：沿用现高亮 + info 输出，追加发 `NODE_SELECTED`（读 `dataset.egretKey`）。点击空白（无 `.egret-node` 祖先）：发 `NODE_DESELECTED`。Escape：同空白。
-- 收 `SELECT_NODE`：按 `[data-egret-key=...]` 查询；命中则高亮 + `scrollIntoView`（静默，不回发）；未命中回发 `NODE_NOT_FOUND`。皮肤包装层（`.egret-skin-wrap`）可被此查询命中 ✓（见 1.3）。
+- `CANVAS_READY`：脚本执行完即发送（携带 documentId）；img 异步加载不阻塞。
+- 收 `SELECT_NODE`：按 key 查询；命中则高亮 + `scrollIntoView`（静默，不回发）；未命中回发 `NODE_NOT_FOUND`。皮肤包装层可被命中 ✓。
 - 收 `DESELECT_NODE`：清除高亮（静默）。
 - `?focus=` 参数行为保留（兼容直开 /view 链接）。
 - P2-E 的 `bare=1` 输出不含脚本，回写链路不受影响。
@@ -202,6 +216,7 @@ iframe#frame { width: stageW px; height: stageH px;
 
 - 未选中：空状态文案（需求 6.2 原文）。
 - 选中：按 index 取节点，按类型选分组（需求 6.5 表）；分组可折叠（分组标题行点击）。
+- **实例属性与来源信息分离**（评审修正三）：Inspector 展示的是**当前实例节点**的属性；来源文件/原始 class/实例路径单独在 Component 或 Basic 的来源小节展示，不把源皮肤的属性混入当前实例属性列表。V1 不做实例覆盖源属性的合并展示（当前构建器无覆盖机制），但语义上保留「这是实例节点自身的 attrs」的边界。
 - 字段直取 Scene JSON（**禁止**从 DOM/CSS 反推）：
   - Basic：type/name/id/key/path/srcFile/component(JSON)；key/srcFile 旁给「复制」按钮（navigator.clipboard）。
   - Transform：**两栏对照**——原始（attrs.x/y/width/height，仅存在时显示）与计算（bounds.*）；不存在显示 `—`；绝不把 bounds 伪装成原始属性。
@@ -209,8 +224,9 @@ iframe#frame { width: stageW px; height: stageH px;
   - Image：attrs.source/scale9Grid/fillMode + asset（kind/file/frame）；asset 为 null 且有 source → 显示「资源未解析」诊断（不静默）。
   - Text：attrs 中 text/size/textColor/bold/italic/textAlign/verticalAlign/strokeColor/stroke/lineSpacing 存在才显示；颜色值（0xRRGGBB）显示色块 + 原值。
   - Component：component.identity/kind/skinClass + srcFile + 展开标记（srcFile≠当前文件）+ simulated。
-  - Advanced：attrs 完整 JSON（`<pre>` 折叠）。
-  - Diagnostics：unsupported[]（若有）+ 文档级 diagnostics 中 nodeId 匹配当前 id/name 的条目。
+  - Advanced：attrs 完整 JSON（`<pre>`）；**默认折叠**（避免复杂节点把属性栏撑长）。
+  - Diagnostics：见下方匹配规则。
+- **Diagnostics 节点关联优先级**（评审修正四）：按 ① 节点 stableKey（若诊断携带）→ ② 精确 instancePath → ③ nodeId（id 存在且全文唯一）→ ④ 无法唯一确定时**不绑定节点**，显示在文档级 Diagnostics。禁止仅凭 name 模糊匹配（同名 Label 会误绑）。
 - 布尔显示 true/false；空值 `—`；长文本换行。
 
 ### 3.7 工程组件树（project-tree.ts）
@@ -244,19 +260,20 @@ iframe#frame { width: stageW px; height: stageH px;
 
 任务：
 
-1. `src/editor/editor-state.ts`：Selection Store + subscribe + 文档加载（请求序号防过期）。
-2. `component-selector.ts` 升级：postMessage 协议全套（3.2）。
-3. `canvas-host.ts`：收发消息 + 待定位暂存（iframe 未 READY 时排队，READY 后补发）+ 文件切换清理。
-4. `scene-tree.ts`：点击选中 → 静默高亮 canvas；收 NODE_SELECTED → 展开/滚动/选中；NODE_NOT_FOUND → 树顶提示条。
+1. `src/editor/editor-state.ts`：Selection Store + subscribe + 文档加载（请求序号防过期）+ docId 生成。
+2. `component-selector.ts` 升级：postMessage 协议全套（3.2，含 documentId 与统一 `[data-egret-key]` 点击判定）。
+3. `canvas-host.ts`：收发消息 + documentId 过期丢弃 + 待定位暂存（iframe 未 READY 时排队，READY 后补发）+ 文件切换清理。
+4. `scene-tree.ts`：点击选中 → 静默高亮 canvas；收 NODE_SELECTED → 展开/滚动/选中（含根舞台节点选中）；NODE_NOT_FOUND → 树顶提示条。
 5. 防循环：source 字段贯通三条入口。
+6. 组件展开节点溯源：选中展开内容节点时 Inspector/树行显示来源 EXML 与实例路径（数据已有 srcFile/component，仅展示）。
 
 验收（真实工程 HometownRebateView）：Tree 点击任意节点 Canvas 高亮；Canvas 点击（含 stage 背景、位图数字、item 内部节点、内联皮肤子节点）Tree 定位；切换文件旧选择清除；`?focus=` 兼容不破坏。
 
 ### P2：Inspector 属性展示（对应 AC-08/09/11）
 
-任务：`inspector.ts` 全量分组（3.6 设计）+ index 共用 + 类型分发。
+任务：`inspector.ts` 全量分组（3.6 设计，含实例/来源分离与 Diagnostics 匹配优先级）+ index 共用 + 类型分发 + Advanced 默认折叠。
 
-验收：Group/Image/Label/Button/Scroller/BitmapNumber/Animation 各类型抽查（HometownRebateView + GameDisbandVoteSkin + List 页面）；原始属性与计算 bounds 对照明确；模拟节点标记可见；资源未解析有诊断。
+验收：Group/Image/Label/Button/Scroller/BitmapNumber/Animation 各类型抽查（HometownRebateView + GameDisbandVoteSkin + List 页面）；原始属性与计算 bounds 对照明确；模拟节点标记可见；资源未解析有诊断；同名节点诊断不误绑。
 
 ### P3：Canvas 体验（对应 AC-15）
 
@@ -305,7 +322,7 @@ AC-01~05 → P0；AC-06/07/10/11/12/13/14 → P1；AC-08/09 → P2；AC-15 → P
 |---|---|
 | /api/scene rootKey 增量字段破坏既有断言 | 执行时先跑 check:all 定位，断言为字段级预期不破坏；若破坏同步补 |
 | stableKey 与 DOM data-egret-key 不一致（理论不存在） | selector 侧只信 DOM key，树侧只信 JSON key；不匹配走 NODE_NOT_FOUND + 树提示，不误选 |
-| 皮肤包装层（.egret-skin-wrap）非 .egret-node，canvas 点击选中父按钮 | 设计内：包装层透明无视觉，Tree 行仍可选中它并高亮（data-egret-key 查询命中） |
+| 皮肤包装层（.egret-skin-wrap）非 .egret-node | 统一 `[data-egret-key]` 判定后包装层本体可被点击选中（选中透明 Skin 节点，Tree 有对应行，语义一致） |
 | 位图数字位片 span 无 data 属性 | 点击命中外层 bitmapnumber div（closest 特性），Tree 选中即数字组件本体 |
 | 大文档 Scene Tree 卡顿 | V1 按需展开 + 折叠不建 DOM；实测 HometownRebateView 111 节点无压力；数千节点再虚拟化（需求十一章预留） |
 | iframe img 未加载完即选中 | 选择/高亮与图片加载无关（DOM 查询）；不等待 |
