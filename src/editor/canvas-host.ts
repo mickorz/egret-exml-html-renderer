@@ -14,6 +14,26 @@ export function canvasHostScript(): string {
   var relBar = document.getElementById("rel-bar");
   var lastDocRef = null; // 守卫用 doc 对象身份：加载中（null）与加载完成（新对象）是不同状态，docId 在两者间不变
   var canvasReady = false; // iframe 文档就绪（CANVAS_READY 后才可发消息，否则消息丢在文档加载中）
+  var ZOOM_STEP = 1.25;
+
+  // 应用缩放（P3-A 铁律：只改外层视觉——frameBox 占位 = 舞台 x zoom；iframe transform 缩放；
+  // 不改 Scene JSON/Renderer/bounds/选择协议；浏览器合成层缩放后点击自动命中）
+  function applyZoom() {
+    var st = (ED.doc && !ED.doc.error && ED.doc.stage) || {};
+    var w = st.width || 640;
+    var h = st.height || 480;
+    frame.style.width = w + "px";
+    frame.style.height = h + "px";
+    frame.style.transformOrigin = "0 0";
+    frame.style.transform = ED.zoom === 1 ? "" : "scale(" + ED.zoom + ")";
+    frameBox.style.width = Math.round(w * ED.zoom) + "px";
+    frameBox.style.height = Math.round(h * ED.zoom) + "px";
+  }
+
+  // topbar 缩放控件：步进 x1.25，clamp 由 edSetZoom 统一处理；Fit 在 P3-B 接通
+  document.getElementById("tb-zoom-in").onclick = function () { edSetZoom(ED.zoom * ZOOM_STEP, false); };
+  document.getElementById("tb-zoom-out").onclick = function () { edSetZoom(ED.zoom / ZOOM_STEP, false); };
+  document.getElementById("tb-zoom-reset").onclick = function () { edSetZoom(1, false); };
 
   function postToCanvas(m) {
     if (canvasReady && frame.contentWindow) frame.contentWindow.postMessage(m, location.origin);
@@ -65,17 +85,13 @@ export function canvasHostScript(): string {
         frameBox.style.height = "0";
         return;
       }
-      var st = ED.doc.stage || {};
-      var w = st.width || 640;
-      var h = st.height || 480;
-      frame.style.width = w + "px";
-      frame.style.height = h + "px";
-      frameBox.style.width = w + "px";  // P3：缩放时 = 舞台尺寸 x zoom
-      frameBox.style.height = h + "px";
+      applyZoom();
       frame.src = "/view?file=" + encodeURIComponent(ED.file) + "&docid=" + encodeURIComponent(ED.docId);
       loadRel(ED.doc.className, ED.file);
       return;
     }
+    // 同文档内：缩放变化（选择变化的 sendSelection 在下方）
+    if (ED.doc && !ED.doc.error) applyZoom();
     // 同文档内选择变化：树来源 -> 转发画布高亮
     if (ED.doc && !ED.doc.error) sendSelection();
   });

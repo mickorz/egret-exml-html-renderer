@@ -207,14 +207,15 @@ ${inspectorScript()}
     document.getElementById("proj-pane").style.height = Math.max(110, Math.min(window.innerHeight - top - 120, ev.clientY - top)) + "px";
   });
 
-  // 缩放控件 P3 阶段实现，P0 占位禁用
-  ["tb-zoom-in", "tb-zoom-out", "tb-zoom-reset", "tb-fit"].forEach(function (id) { document.getElementById(id).disabled = true; });
+  // 缩放控件（P3-A 已接通 Zoom；Fit 在 P3-B 接通前保持禁用）
+  ["tb-zoom-in", "tb-zoom-out", "tb-zoom-reset"].forEach(function (id) { document.getElementById(id).disabled = false; });
 
-  // topbar 文件与舞台尺寸刷新
+  // topbar 文件与舞台尺寸与缩放比例刷新
   edSubscribe(function () {
     document.getElementById("tb-file").textContent = ED.file || "选择左侧 EXML 文件";
     var st = ED.doc && ED.doc.stage;
     document.getElementById("tb-stage").textContent = st ? (st.width + " x " + st.height) : "";
+    document.getElementById("tb-zoom").textContent = "缩放 " + Math.round(ED.zoom * 100) + "%" + (ED.zoomFit ? "（Fit）" : "");
   });
 })();
 </script>

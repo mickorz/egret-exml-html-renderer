@@ -17,6 +17,8 @@ export function stateScript(): string {
     fetchSeq: 0,           // 请求序号：连续快速切换文件时只认最新
     sel: null,             // 当前选中 stableKey（P1 接入）
     source: null,          // 选择来源 "project"|"tree"|"canvas"（P1 防循环）
+    zoom: 1,               // 画布缩放（0.1~4，即 10%~400%；只改外层视觉，不改 Scene JSON/渲染）
+    zoomFit: false,        // Fit 模式标记（窗口 resize 时重新适配；手动缩放后取消）
     ptExpanded: {},        // 工程树目录展开集合（路径 -> bool）
     stExpanded: {},        // Scene Tree 节点展开集合（key -> bool）
     index: null,           // Map<key, {node, parentKey, depth}>（Scene Tree 与 Inspector 共用）
@@ -45,6 +47,15 @@ export function stateScript(): string {
     edNotify();
   };
 
+  // 统一缩放入口（P3-A）：clamp 10%~400%；fit 标记 Fit 模式（resize 重适配依据）；幂等
+  window.edSetZoom = function (z, fit) {
+    var v = Math.max(0.1, Math.min(4, z));
+    if (ED.zoom === v && ED.zoomFit === !!fit) return;
+    ED.zoom = v;
+    ED.zoomFit = !!fit;
+    edNotify();
+  };
+
   window.edOpenFile = function (file) {
     if (ED.file === file && ED.doc && !ED.doc.error) return; // 重复点击不重载（防 iframe 闪烁）
     ED.file = file;
@@ -53,6 +64,7 @@ export function stateScript(): string {
     ED.sel = null; ED.source = null;
     ED.docId = "d" + (++ED.docSeq);
     ED.stExpanded = {}; ED.index = null;
+    ED.zoom = 1; ED.zoomFit = false; // 文件切换重置缩放（验收矩阵：状态正确重置）
     edNotify(); // 通知加载中状态
     fetch("/api/scene?file=" + encodeURIComponent(file)).then(function (r) {
       if (!r.ok) throw new Error("HTTP " + r.status);

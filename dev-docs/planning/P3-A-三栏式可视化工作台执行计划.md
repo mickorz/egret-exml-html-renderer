@@ -275,11 +275,22 @@ iframe#frame { width: stageW px; height: stageH px;
 
 验收：Group/Image/Label/Button/Scroller/BitmapNumber/Animation 各类型抽查（HometownRebateView + GameDisbandVoteSkin + List 页面）；原始属性与计算 bounds 对照明确；模拟节点标记可见；资源未解析有诊断；同名节点诊断不误绑。
 
-### P3：Canvas 体验（对应 AC-15）
+### P3：Canvas 体验（对应 AC-15；评审细化：四阶段独立提交）
 
-任务：`canvas-viewport.ts`（3.5）+ iframe 侧悬停（`.egret-hover` 样式 + 名称/类型/宽高浮标，iframe 内实现无坐标换算）+ topbar 缩放控件接通。
+架构铁律（评审三条核心要求）：
 
-验收：Fit/±/100% 正常；缩放后双向选择不受影响；悬停与选中视觉区分。
+1. **Zoom 只改外层视觉**：`#frame-box` 占位尺寸 = 舞台尺寸 x zoom，iframe 用 `transform: scale(z)` + `transform-origin: 0 0`；不改 Scene JSON / Renderer / 节点 bounds / 选择通信协议。缩放后点击画布仍须正确命中。
+2. **Hover 不干扰 Selected**：Hover = 蓝色细边框临时提示（不触发 Selection Store、不改 Inspector）；Selected = 金框持续。Tooltip 在 iframe 内部实现（无跨 iframe 坐标换算）。
+3. **Fit 用实际可视区域**：scale = min((viewportW-2p)/stageW, (viewportH-2p)/stageH)，p 为留白；避免连续 Fit 与缩放互相影响。
+
+任务：
+
+- **P3-A Zoom**：ED.zoom（10%~400%，x1.25 步进）；canvas-host applyZoom（frameBox 占位 + iframe transform）；topbar 四按钮接通；文件切换重置 100%。
+- **P3-B Fit**：fitZoom（#viewport clientWidth/Height - 2p）；zoomFit 模式标记（手动 zoom 后取消；窗口 resize 且 fit 模式时重新适配）；fit 后自动居中（margin:auto）；超视口滚动平移。
+- **P3-C Hover**：selector 脚本 mouseover/mouseout + `.egret-hover` 蓝框 + iframe 内 Tooltip（名称/类型/宽高，DOM 属性 + 渲染尺寸）；不触发选择；与选中视觉区分（选中节点不再 hover 高亮）。
+- **P3-D Inspector 体验**：合成根 skin path 显示 className（P2-1）；Diagnostics 文档级默认折叠 + 计数（P2-2）；唯一可定位诊断点击跳转 Tree/Canvas（source="inspector" 贯通 scene-tree reveal + canvas-host 转发）。
+
+验收矩阵（评审）：50/100/200 比例正确；400/10 边界；Fit 完整显示；窗口 resize 正确；缩放后 Tree 选中画布高亮 / Canvas 点击树定位；Hover 临时边框与信息正确、Hover 与 Selected 不冲突；文件切换 Zoom/Fit 重置；Diagnostics 折叠展开定位正确；check:all + tsc + 两真实工程浏览器回归。
 
 ---
 
