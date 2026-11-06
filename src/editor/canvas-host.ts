@@ -1,5 +1,9 @@
-// Canvas 宿主（P3-A P0）：iframe 加载 /view + 舞台尺寸设置 + 关系条（P2-C 邻域面板迁移）
-// P1 接入 postMessage 双向通信（SELECT_NODE/NODE_SELECTED 等，见执行计划 3.2）
+// Canvas 宿主（P3-A P1）：iframe 加载 /view（&docid）+ 舞台尺寸设置 + 关系条（P2-C 邻域面板迁移）
+// postMessage 双向选择（执行计划 3.2）：
+//   iframe -> 父：CANVAS_READY / NODE_SELECTED / NODE_DESELECTED / NODE_NOT_FOUND（均携带 documentId）
+//   父 -> iframe：SELECT_NODE / DESELECT_NODE（携带 documentId）
+//   校验链：origin -> e.source（WindowProxy 同一文档导航期间保持，需 documentId 过滤过期文档）-> documentId
+//   防环：仅转发 tree 来源的选择到画布；canvas 来源已在 iframe 本地高亮
 
 export function canvasHostScript(): string {
   return `
@@ -9,33 +13,71 @@ export function canvasHostScript(): string {
   var frameBox = document.getElementById("frame-box");
   var relBar = document.getElementById("rel-bar");
   var lastDocRef = null; // 守卫用 doc 对象身份：加载中（null）与加载完成（新对象）是不同状态，docId 在两者间不变
+  var canvasReady = false; // iframe 文档就绪（CANVAS_READY 后才可发消息，否则消息丢在文档加载中）
+
+  function postToCanvas(m) {
+    if (canvasReady && frame.contentWindow) frame.contentWindow.postMessage(m, location.origin);
+  }
+
+  // 树侧选择 -> 画布高亮（仅 tree 来源；canvas 来源回发会成环）
+  function sendSelection() {
+    if (ED.source !== "tree") return;
+    if (ED.sel) postToCanvas({ type: "SELECT_NODE", documentId: ED.docId, key: ED.sel });
+    else postToCanvas({ type: "DESELECT_NODE", documentId: ED.docId });
+  }
+
+  // iframe -> 父：就绪/选中/取消/未找到（校验链 origin -> source -> documentId -> 字段类型）
+  window.addEventListener("message", function (e) {
+    if (e.origin !== location.origin) return;
+    if (e.source !== frame.contentWindow) return;
+    var m = e.data;
+    if (!m || typeof m !== "object" || m.documentId !== ED.docId) return; // 过期文档消息丢弃
+    if (m.type === "CANVAS_READY") {
+      canvasReady = true;
+      sendSelection(); // 树侧已选中而画布刚就绪：补发高亮
+      return;
+    }
+    if (m.type === "NODE_SELECTED") {
+      if (typeof m.key !== "string" || !m.key) return;
+      edSelect(m.key, "canvas");
+      return;
+    }
+    if (m.type === "NODE_DESELECTED") {
+      edDeselect("canvas");
+      return;
+    }
+    if (m.type === "NODE_NOT_FOUND") {
+      // 树选中了画布未渲染的节点（如 List 动态项）：提示而不静默
+      console.warn("[canvas-host] 画布未找到节点:", m.key);
+      relBar.insertAdjacentHTML("afterbegin", '<div class="cycle">画布中未找到选中节点（可能未渲染或属于动态内容）: ' + esc(m.key) + '</div>');
+      return;
+    }
+  });
 
   edSubscribe(function () {
-    if (ED.doc === lastDocRef) return; // 同文档内选择变化（P1 处理高亮）
-    lastDocRef = ED.doc;
-    if (!ED.file || !ED.doc) {
-      relBar.style.display = "none";
-      frame.src = "about:blank";
-      frameBox.style.width = "0";
-      frameBox.style.height = "0";
+    if (ED.doc !== lastDocRef) { // 新文档（含加载中）：画布需重载，就绪状态重置
+      lastDocRef = ED.doc;
+      canvasReady = false;
+      if (!ED.file || !ED.doc || ED.doc.error) {
+        relBar.style.display = "none";
+        frame.src = "about:blank";
+        frameBox.style.width = "0";
+        frameBox.style.height = "0";
+        return;
+      }
+      var st = ED.doc.stage || {};
+      var w = st.width || 640;
+      var h = st.height || 480;
+      frame.style.width = w + "px";
+      frame.style.height = h + "px";
+      frameBox.style.width = w + "px";  // P3：缩放时 = 舞台尺寸 x zoom
+      frameBox.style.height = h + "px";
+      frame.src = "/view?file=" + encodeURIComponent(ED.file) + "&docid=" + encodeURIComponent(ED.docId);
+      loadRel(ED.doc.className, ED.file);
       return;
     }
-    if (ED.doc.error) {
-      relBar.style.display = "none";
-      frame.src = "about:blank";
-      frameBox.style.width = "0";
-      frameBox.style.height = "0";
-      return;
-    }
-    var st = ED.doc.stage || {};
-    var w = st.width || 640;
-    var h = st.height || 480;
-    frame.style.width = w + "px";
-    frame.style.height = h + "px";
-    frameBox.style.width = w + "px";  // P3：缩放时 = 舞台尺寸 x zoom
-    frameBox.style.height = h + "px";
-    frame.src = "/view?file=" + encodeURIComponent(ED.file);
-    loadRel(ED.doc.className, ED.file);
+    // 同文档内选择变化：树来源 -> 转发画布高亮
+    if (ED.doc && !ED.doc.error) sendSelection();
   });
 
   // ---- 关系条（P2-C loadNeighborhood 逻辑迁移） ----

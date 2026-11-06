@@ -30,6 +30,21 @@ export function stateScript(): string {
     }
   };
 
+  // 统一选择入口（P1-A）：key 为 stableKey；source 区分来源（"tree"/"canvas"），防树与画布互相回发成环
+  // 幂等：重复同 key 同来源不通知（避免点击已选行引发重渲染/闪烁）
+  window.edSelect = function (key, source) {
+    if (!key || (ED.sel === key && ED.source === source)) return;
+    ED.sel = key;
+    ED.source = source;
+    edNotify();
+  };
+  window.edDeselect = function (source) {
+    if (ED.sel === null) return;
+    ED.sel = null;
+    ED.source = source || null;
+    edNotify();
+  };
+
   window.edOpenFile = function (file) {
     if (ED.file === file && ED.doc && !ED.doc.error) return; // 重复点击不重载（防 iframe 闪烁）
     ED.file = file;

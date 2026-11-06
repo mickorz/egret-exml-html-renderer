@@ -69,6 +69,8 @@ body { font-family:sans-serif; background:#222; color:#ddd; display:flex; flex-d
 .tree .row:hover { background:#2f2f2f; }
 .tree .row.sel { background:#3a5068; color:#fff; }
 .tree .row .caret { width:12px; flex:none; color:#888; text-align:center; }
+.tree .row .caret.clk { cursor:pointer; border-radius:3px; }
+.tree .row .caret.clk:hover { color:#fff; background:#3a3a3a; }
 .tree .row .icon { flex:none; width:16px; height:16px; line-height:16px; text-align:center; font-size:10px; background:#3a3a3a; border-radius:3px; color:#9cc; }
 .tree .row .lbl { color:#ccc; overflow:hidden; text-overflow:ellipsis; }
 .tree .row .lbl .id { color:#7ec6ff; }

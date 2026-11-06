@@ -13,6 +13,7 @@ export function projectTreeScript(): string {
   var locateBtn = document.getElementById("pt-locate");
   var allFiles = [];
   var searchResults = null; // null = 目录树模式；数组 = 搜索结果模式
+  var searchSeq = 0;       // 请求序号：连续搜索时旧响应丢弃，防止覆盖新结果
   var SEARCH_LIMIT = 300;
 
   function esc(s) {
@@ -111,13 +112,16 @@ export function projectTreeScript(): string {
   });
   function doSearch() {
     var v = qEl.value.trim();
+    var seq = ++searchSeq;
     if (!v) { searchResults = null; infoEl.textContent = "全部 " + allFiles.length + " 个 EXML"; renderTree(); return; }
     infoEl.textContent = "搜索中...";
     fetch("/api/ui-assets?" + mode + "=" + encodeURIComponent(v)).then(function (r) { return r.json(); }).then(function (res) {
+      if (seq !== searchSeq) return; // 过期响应丢弃（已发起更新的搜索）
       searchResults = res.entries;
       infoEl.textContent = "命中 " + res.count + " / " + res.stats.entryCount + "（" + Math.round(res.stats.buildMs) + "ms）";
       renderTree();
     }).catch(function (err) {
+      if (seq !== searchSeq) return; // 过期响应丢弃
       infoEl.textContent = "搜索失败: " + err;
     });
   }
