@@ -126,10 +126,10 @@ export function sceneTreeScript(): string {
       lastInitDoc = ED.doc;
       initExpansion();
     }
-    // 选择变化且来源 Canvas：展开父链并定位到对应行
+    // 选择变化且来源 Canvas/Inspector（诊断跳转）：展开父链并定位到对应行
     if (ED.sel !== lastSel) {
       lastSel = ED.sel;
-      if (ED.sel && ED.source === "canvas") revealSelection();
+      if (ED.sel && (ED.source === "canvas" || ED.source === "inspector")) revealSelection();
     }
     render();
   });

@@ -91,6 +91,8 @@ body { font-family:sans-serif; background:#222; color:#ddd; display:flex; flex-d
 #inspector .diag .lv { color:#888; }
 #inspector .diag-warn { color:#ffb96b; }
 #inspector .diag-err { color:#ff7d66; }
+#inspector .diag.diag-jump { cursor:pointer; text-decoration:underline dotted; }
+#inspector .diag.diag-jump:hover { background:#2f2f2f; }
 #inspector .none { color:#666; padding:2px 8px 2px 20px; }
 #inspector .grp { border-bottom:1px solid #333; }
 #inspector .grp-head { display:flex; align-items:center; gap:6px; padding:5px 8px; cursor:pointer; color:#8ee6ff; background:#262626; }

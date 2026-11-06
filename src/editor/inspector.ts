@@ -223,9 +223,14 @@ export function inspectorScript(): string {
     if (same !== 1) return [];
     return diags.filter(function (d) { return d && d.nodeId === n.id; });
   }
-  function diagRow(d) {
+  function diagRow(d, jumpKey) {
     var row = document.createElement("div");
     row.className = "diag " + (d.level === "error" ? "diag-err" : "diag-warn");
+    if (jumpKey) {
+      row.className += " diag-jump";
+      row.title = "点击定位节点（Tree 与 Canvas）";
+      row.onclick = function () { edSelect(jumpKey, "inspector"); };
+    }
     var lv = document.createElement("span");
     lv.className = "lv";
     lv.textContent = "[" + (d.level || "info") + "] ";
@@ -234,6 +239,15 @@ export function inspectorScript(): string {
     row.appendChild(lv);
     row.appendChild(tx);
     return row;
+  }
+  // 诊断可跳转判定：nodeId 存在且全文档唯一（重复 id 不跳，与节点级匹配同一优先级；禁止 name 模糊匹配）
+  function diagJumpKey(nodeId) {
+    if (!nodeId || !ED.index) return null;
+    var hit = null, same = 0;
+    ED.index.forEach(function (v) {
+      if (v.node && v.node.id === nodeId) { same++; if (same === 1) hit = v.node.key; }
+    });
+    return same === 1 ? hit : null;
   }
   function renderDiagnostics(n) {
     var doc = ED.doc;
@@ -261,9 +275,23 @@ export function inspectorScript(): string {
       body.appendChild(sub("当前节点相关（0）"));
       body.appendChild(emptyNote("id 非全文档唯一（合成展开重复），诊断不绑定节点，见文档级"));
     }
-    body.appendChild(sub("文档级 Diagnostics（全部 " + allDiags.length + "）"));
-    if (allDiags.length) allDiags.forEach(function (d) { body.appendChild(diagRow(d)); });
-    else body.appendChild(emptyNote("无诊断"));
+    // 文档级默认折叠 + 计数（P3-D：诊断多的页面不再把 Inspector 撑长）
+    var head = document.createElement("div");
+    head.className = "insp-sub";
+    head.textContent = "文档级 Diagnostics（全部 " + allDiags.length + "，点击" + (docDiagCollapsed ? "展开" : "折叠") + "）";
+    body.appendChild(head);
+    if (allDiags.length) {
+      var listEl = document.createElement("div");
+      listEl.className = "diag-list";
+      if (docDiagCollapsed) listEl.style.display = "none";
+      allDiags.forEach(function (d) { listEl.appendChild(diagRow(d, d.nodeId ? diagJumpKey(d.nodeId) : null)); });
+      body.appendChild(listEl);
+      head.onclick = function () {
+        docDiagCollapsed = !docDiagCollapsed;
+        listEl.style.display = docDiagCollapsed ? "none" : "";
+        head.textContent = "文档级 Diagnostics（全部 " + allDiags.length + "，点击" + (docDiagCollapsed ? "展开" : "折叠") + "）";
+      };
+    } else body.appendChild(emptyNote("无诊断"));
     return body;
   }
 
@@ -278,6 +306,7 @@ export function inspectorScript(): string {
     { id: "diagnostics", title: "Diagnostics 诊断", render: renderDiagnostics }
   ];
   var collapsed = { advanced: true }; // Advanced 默认折叠（复杂节点 attrs 长）
+  var docDiagCollapsed = true; // 文档级 Diagnostics 默认折叠（P3-D：计数可见，按需展开）
 
   function groupEl(g, node) {
     var body = g.render(node);

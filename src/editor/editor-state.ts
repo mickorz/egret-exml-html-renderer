@@ -92,7 +92,7 @@ export function stateScript(): string {
     var nodes = (ED.doc && ED.doc.nodes) || [];
     var rootKey = ED.doc && ED.doc.rootKey;
     for (var i = 0; i < nodes.length; i++) walk(nodes[i], rootKey, 1);
-    if (rootKey) index.set(rootKey, { node: { type: "skin", key: rootKey, children: nodes }, parentKey: null, depth: 0 });
+    if (rootKey) index.set(rootKey, { node: { type: "skin", key: rootKey, path: ED.doc.className, children: nodes }, parentKey: null, depth: 0 }); // 合成根 path = 皮肤类名（P3-D：根节点身份展示）
     ED.index = index;
   };
 })();

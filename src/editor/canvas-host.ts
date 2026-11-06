@@ -57,9 +57,9 @@ export function canvasHostScript(): string {
     if (canvasReady && frame.contentWindow) frame.contentWindow.postMessage(m, location.origin);
   }
 
-  // 树侧选择 -> 画布高亮（仅 tree 来源；canvas 来源回发会成环）
+  // 树/Inspector 侧选择 -> 画布高亮（canvas 来源已在 iframe 本地高亮，回发会成环）
   function sendSelection() {
-    if (ED.source !== "tree") return;
+    if (ED.source !== "tree" && ED.source !== "inspector") return;
     if (ED.sel) postToCanvas({ type: "SELECT_NODE", documentId: ED.docId, key: ED.sel });
     else postToCanvas({ type: "DESELECT_NODE", documentId: ED.docId });
   }
