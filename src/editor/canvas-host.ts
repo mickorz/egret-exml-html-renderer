@@ -30,10 +30,28 @@ export function canvasHostScript(): string {
     frameBox.style.height = Math.round(h * ED.zoom) + "px";
   }
 
-  // topbar 缩放控件：步进 x1.25，clamp 由 edSetZoom 统一处理；Fit 在 P3-B 接通
+  // topbar 缩放控件：步进 x1.25，clamp 由 edSetZoom 统一处理；手动缩放取消 Fit 模式
   document.getElementById("tb-zoom-in").onclick = function () { edSetZoom(ED.zoom * ZOOM_STEP, false); };
   document.getElementById("tb-zoom-out").onclick = function () { edSetZoom(ED.zoom / ZOOM_STEP, false); };
   document.getElementById("tb-zoom-reset").onclick = function () { edSetZoom(1, false); };
+
+  // Fit（P3-B）：用 #viewport 实际可视区域（非浏览器窗口）；留白 p 两侧各一 → 可用 = client - 2p
+  // scale = min((vw-2p)/stageW, (vh-2p)/stageH)；连续 Fit 基于同一公式直算（zoom 不参与，互不影响）
+  var FIT_PAD = 20;
+  function fitZoom() {
+    var st = (ED.doc && !ED.doc.error && ED.doc.stage) || {};
+    var sw = st.width || 640;
+    var sh = st.height || 480;
+    var vp = document.getElementById("viewport");
+    var vw = vp.clientWidth - FIT_PAD * 2;
+    var vh = vp.clientHeight - FIT_PAD * 2;
+    if (vw <= 0 || vh <= 0) return;
+    edSetZoom(Math.min(vw / sw, vh / sh), true);
+  }
+  document.getElementById("tb-fit").disabled = false;
+  document.getElementById("tb-fit").onclick = fitZoom;
+  // 窗口尺寸变化：仅 Fit 模式下重新适配（手动缩放不被覆盖）；不依赖鼠标事件驱动
+  window.addEventListener("resize", function () { if (ED.zoomFit) fitZoom(); });
 
   function postToCanvas(m) {
     if (canvasReady && frame.contentWindow) frame.contentWindow.postMessage(m, location.origin);
