@@ -98,12 +98,94 @@ export function inspectorScript(): string {
     body.appendChild(kvCopy("实例路径 path", n.path));
     return body;
   }
-  function renderTransform(n) { return null; }   // P2-B
-  function renderLayout(n) { return null; }      // P2-B
-  function renderImage(n) { return null; }       // P2-B
-  function renderText(n) { return null; }        // P2-B
+  // 原始 XML 声明统一从 native.attributes 取（完整快照，未被布局计算消费删除）；
+  // 计算结果取 bounds；attrs 是渲染语义属性（构建器转换后剩余，含 _centerH 等合成标记）——仅 Advanced 展示
+  function nativeAttrs(n) { return (n.native && n.native.attributes) || {}; }
+  function hasV(v) { return v !== undefined && v !== null && v !== ""; }
+
+  function renderTransform(n) {
+    var body = document.createDocumentFragment();
+    var na = nativeAttrs(n);
+    // 原始 XML 声明与计算 bounds 分离展示（评审原则二：计算结果绝不伪装成原始属性）
+    body.appendChild(sub("原始 XML 声明（native.attributes）"));
+    body.appendChild(kv("x", na.x));
+    body.appendChild(kv("y", na.y));
+    body.appendChild(kv("width", na.width));
+    body.appendChild(kv("height", na.height));
+    body.appendChild(sub("计算 bounds（Scene Builder）"));
+    var b = n.bounds || {};
+    body.appendChild(kv("x", b.x));
+    body.appendChild(kv("y", b.y));
+    body.appendChild(kv("width", b.width));
+    body.appendChild(kv("height", b.height));
+    return body;
+  }
+  var LAYOUT_KEYS = ["left", "right", "top", "bottom", "horizontalCenter", "verticalCenter", "percentWidth", "percentHeight"];
+  function renderLayout(n) {
+    var na = nativeAttrs(n);
+    var has = LAYOUT_KEYS.some(function (k) { return hasV(na[k]); });
+    if (!has && !n.layout) return null; // 无布局约束且无 layout 对象：整组隐藏
+    var body = document.createDocumentFragment();
+    body.appendChild(sub("布局约束（原始 XML 声明）"));
+    var shown = 0;
+    LAYOUT_KEYS.forEach(function (k) {
+      if (hasV(na[k])) { body.appendChild(kv(k, na[k])); shown++; }
+    });
+    if (!shown) body.appendChild(emptyNote("无布局约束属性"));
+    body.appendChild(sub("layout 对象（e:layout 属性子元素）"));
+    if (n.layout) {
+      body.appendChild(kv("className", n.layout.className));
+      body.appendChild(preBlock(n.layout.attrs || {}));
+    } else body.appendChild(emptyNote("无 e:layout 声明"));
+    return body;
+  }
+  function renderImage(n) {
+    var na = nativeAttrs(n);
+    var hasSource = hasV(na.source);
+    if (!hasSource && !n.asset) return null; // 无 source 且无已解析资源：整组隐藏
+    var body = document.createDocumentFragment();
+    body.appendChild(sub("图像属性（原始 XML 声明）"));
+    body.appendChild(kv("source", na.source));
+    if (hasV(na.scale9Grid)) body.appendChild(kv("scale9Grid", na.scale9Grid));
+    if (hasV(na.fillMode)) body.appendChild(kv("fillMode", na.fillMode));
+    if (hasV(na.smooth)) body.appendChild(kv("smooth", na.smooth));
+    body.appendChild(sub("资源解析（asset，Scene Builder）"));
+    if (n.asset) {
+      body.appendChild(kv("kind", n.asset.kind));
+      body.appendChild(kv("file", n.asset.file));
+      if (n.asset.frame) body.appendChild(kv("frame", JSON.stringify(n.asset.frame)));
+    } else if (hasSource) {
+      body.appendChild(emptyNote("资源未解析（素材缺失或未登记）")); // 不静默
+    } else body.appendChild(emptyNote("无 source"));
+    return body;
+  }
+  var TEXT_KEYS = ["text", "size", "bold", "italic", "fontFamily", "textAlign", "verticalAlign", "lineSpacing", "maxLines", "stroke", "strokeColor", "multiline"];
+  var TEXT_COLOR_KEYS = { textColor: true, strokeColor: true };
+  function renderText(n) {
+    var na = nativeAttrs(n);
+    var has = TEXT_KEYS.some(function (k) { return hasV(na[k]); }) || hasV(na.textColor);
+    if (!has) return null; // 无文本属性：整组隐藏（Group/Rect 等不显示空 Text 组）
+    var body = document.createDocumentFragment();
+    body.appendChild(sub("文本属性（原始 XML 声明）"));
+    TEXT_KEYS.forEach(function (k) {
+      var v = na[k];
+      if (!hasV(v)) return;
+      if (TEXT_COLOR_KEYS[k]) body.appendChild(kv(k, colorValue(v)));
+      else body.appendChild(kv(k, v));
+    });
+    if (hasV(na.textColor)) body.appendChild(kv("textColor", colorValue(na.textColor)));
+    return body;
+  }
   function renderComponent(n) { return null; }   // P2-C
-  function renderAdvanced(n) { return null; }    // P2-B
+  function renderAdvanced(n) {
+    if (!n.attrs || !Object.keys(n.attrs).length) return null;
+    var body = document.createDocumentFragment();
+    body.appendChild(sub("渲染语义属性 attrs（构建器转换后剩余，合成标记含 _centerH/_right）"));
+    body.appendChild(preBlock(n.attrs));
+    body.appendChild(sub("原始 XML 属性 native.attributes（完整声明快照）"));
+    body.appendChild(preBlock(nativeAttrs(n)));
+    return body;
+  }
   function renderDiagnostics(n) { return null; } // P2-D
 
   var GROUPS = [
