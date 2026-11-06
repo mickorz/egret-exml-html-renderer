@@ -176,7 +176,30 @@ export function inspectorScript(): string {
     if (hasV(na.textColor)) body.appendChild(kv("textColor", colorValue(na.textColor)));
     return body;
   }
-  function renderComponent(n) { return null; }   // P2-C
+  function renderComponent(n) {
+    // 实例与来源分离（评审原则一）：展示当前实例节点的溯源信息（组件身份/来源文件/模拟标记）
+    // 不把源皮肤的属性混入当前实例属性列表（当前实例自身的属性在上列各组）
+    var na = nativeAttrs(n);
+    var has = !!(n.component || n.srcFile || n.simulated || na.skinName || na.itemRendererSkinName);
+    if (!has) return null; // 非组件实例节点：整组隐藏
+    var body = document.createDocumentFragment();
+    body.appendChild(sub("实例溯源（当前实例节点）"));
+    if (n.component) {
+      body.appendChild(kv("identity", n.component.identity));
+      body.appendChild(kv("kind", n.component.kind));
+      if (n.component.skinClass) body.appendChild(kv("skinClass", n.component.skinClass));
+    }
+    if (na.skinName) body.appendChild(kv("skinName（声明）", na.skinName));
+    if (na.itemRendererSkinName) body.appendChild(kv("itemRendererSkinName（声明）", na.itemRendererSkinName));
+    body.appendChild(sub("来源（Source）"));
+    body.appendChild(kvCopy("来源文件 srcFile", n.srcFile));
+    if (n.srcFile && ED.file && n.srcFile !== ED.file) body.appendChild(emptyNote("展开内容：子树来自源组件 EXML（当前文件仅为引用）"));
+    else if (n.srcFile) body.appendChild(emptyNote("当前文件即来源（非展开内容）"));
+    else body.appendChild(emptyNote("无展开来源（当前文件声明的节点）"));
+    if (n.simulated) body.appendChild(emptyNote("模拟节点：静态预览示例值，非运行时真实数据"));
+    if (n.native && n.native.tag && String(n.native.tag).indexOf("List:") === 0) body.appendChild(emptyNote("合成标签：" + n.native.tag + "（重建时自动再生）"));
+    return body;
+  }
   function renderAdvanced(n) {
     if (!n.attrs || !Object.keys(n.attrs).length) return null;
     var body = document.createDocumentFragment();
